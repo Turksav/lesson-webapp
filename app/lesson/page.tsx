@@ -1,29 +1,25 @@
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
-export default async function LessonsList() {
-  const { data: lessons, error } = await supabase
+export default async function LessonList() {
+  const { data: lessons } = await supabase
     .from('lessons')
     .select('id, title');
 
-  if (error) {
-    console.error('Supabase error:', error);
+  if (!lessons || lessons.length === 0) {
+    return <p>Уроки не найдены</p>;
   }
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+    <div>
       <h1>Список уроков</h1>
-      {lessons && lessons.length > 0 ? (
-        <ul>
-          {lessons.map((lesson) => (
-            <li key={lesson.id}>
-              <Link href={`/lesson/${lesson.id}`}>{lesson.title}</Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>Уроки не найдены</p>
-      )}
+      <ul>
+        {lessons.map((lesson: any) => (
+          <li key={lesson.id}>
+            <Link href={`/lesson/${lesson.id}`}>{lesson.title}</Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
