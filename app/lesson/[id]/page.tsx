@@ -30,7 +30,7 @@ export default async function LessonPage({ params }: Props) {
 
   // Получаем данные урока
   const { data: lessonData, error: lessonError } = await supabase
-    .from<Lesson>('lessons')
+    .from('lessons')
     .select('id, title, description')
     .eq('id', lessonId)
     .single();
