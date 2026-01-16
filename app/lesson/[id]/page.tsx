@@ -4,16 +4,20 @@ interface Props {
   params: { id: string };
 }
 
+// "async" остаётся, потому что мы делаем запрос к Supabase
 export default async function LessonPage({ params }: Props) {
-  const lessonId = params.id;
+  // Разворачиваем Promise
+  const resolvedParams = await params;
+  const lessonId = resolvedParams.id;
 
-  const { data: lesson } = await supabase
+  // Если id в базе числовой, нужно привести к Number
+  const { data: lesson, error } = await supabase
     .from('lessons')
     .select('id, title, description')
-    .eq('id', lessonId)
+    .eq('id', Number(lessonId))
     .single();
 
-  if (!lesson) return <p>Урок не найден</p>;
+  if (!lesson || error) return <p>Урок не найден</p>;
 
   return (
     <div>
