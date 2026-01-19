@@ -5,15 +5,15 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export default function LessonsPage() {
-  const [lessons, setLessons] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
 
   useEffect(() => {
     supabase
-      .from('lessons')
+      .from('courses')
       .select('*')
       .order('id')
       .then(({ data, error }) => {
-        if (!error) setLessons(data || []);
+        if (!error) setCourses(data || []);
       });
   }, []);
 
@@ -22,25 +22,26 @@ export default function LessonsPage() {
       <section className="surface">
         <header className="page-header">
           <div>
-            <h1 className="page-title">Все уроки</h1>
-            <p className="page-subtitle">Выбери урок, чтобы начать проходить материал.</p>
+            <Link href="/" className="btn-back">
+              ← На главную
+            </Link>
+            <h1 className="page-title">Курсы</h1>
+            <p className="page-subtitle">Выбери курс, чтобы перейти к урокам.</p>
           </div>
-          <Link href="/" className="btn btn-ghost btn-sm">
-            На главную
-          </Link>
         </header>
 
-        {lessons.length === 0 ? (
-          <p className="page-subtitle">Пока нет ни одного урока.</p>
+        {courses.length === 0 ? (
+          <p className="page-subtitle">Пока нет ни одного курса.</p>
         ) : (
           <div className="lesson-grid">
-            {lessons.map((l) => (
+            {courses.map((c) => (
               <Link
-                key={l.id}
-                href={`/lesson/${l.id}`}
+                key={c.id}
+                href={`/courses/${c.id}`}
                 className="lesson-card"
               >
-                <h2 className="lesson-card-title">{l.title}</h2>
+                <h2 className="lesson-card-title">{c.title}</h2>
+                {c.description && <p className="page-subtitle">{c.description}</p>}
               </Link>
             ))}
           </div>

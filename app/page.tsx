@@ -1,8 +1,15 @@
+'use client';
+
+import { useState } from 'react';
 import TelegramInit from '@/components/TelegramInit';
 import TelegramUserGate from '@/components/TelegramUserGate';
-import Link from 'next/link';
+import CoursesSection from '@/components/CoursesSection';
+import RulesSection from '@/components/RulesSection';
+import CabinetSection from '@/components/CabinetSection';
 
 export default function Page() {
+  const [activeTab, setActiveTab] = useState<'courses' | 'rules' | 'cabinet'>('courses');
+
   return (
     <TelegramUserGate>
       <TelegramInit />
@@ -18,10 +25,33 @@ export default function Page() {
             <span className="badge">Телеграм-мини‑приложение</span>
           </header>
 
-          <div>
-            <Link href="/lesson" className="btn btn-primary">
-              Посмотреть все уроки
-            </Link>
+          {/* Навигационные табы */}
+          <nav className="main-nav">
+            <button
+              className={`nav-tab ${activeTab === 'courses' ? 'active' : ''}`}
+              onClick={() => setActiveTab('courses')}
+            >
+              Курсы
+            </button>
+            <button
+              className={`nav-tab ${activeTab === 'rules' ? 'active' : ''}`}
+              onClick={() => setActiveTab('rules')}
+            >
+              Правила
+            </button>
+            <button
+              className={`nav-tab ${activeTab === 'cabinet' ? 'active' : ''}`}
+              onClick={() => setActiveTab('cabinet')}
+            >
+              Кабинет
+            </button>
+          </nav>
+
+          {/* Контент секций */}
+          <div className="tab-content">
+            {activeTab === 'courses' && <CoursesSection />}
+            {activeTab === 'rules' && <RulesSection />}
+            {activeTab === 'cabinet' && <CabinetSection />}
           </div>
         </section>
       </main>

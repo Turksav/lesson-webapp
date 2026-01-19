@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
   const [lesson, setLesson] = useState<any>(null);
+  const [sessions, setSessions] = useState<any[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -17,6 +19,15 @@ export default function LessonPage() {
       .eq('id', id)
       .single()
       .then(({ data }) => setLesson(data));
+
+    supabase
+      .from('lesson_sessions')
+      .select('*')
+      .eq('lesson_id', id)
+      .order('order_index')
+      .then(({ data, error }) => {
+        if (!error) setSessions(data || []);
+      });
   }, [id]);
 
   const markCompleted = async () => {
@@ -74,15 +85,30 @@ export default function LessonPage() {
       <section className="surface lesson-layout">
         <header className="lesson-header">
           <div>
+            <Link href={lesson?.course_id ? `/courses/${lesson.course_id}` : '/courses'} className="btn-back">
+              ← Назад
+            </Link>
             <h1 className="lesson-title">{lesson.title}</h1>
             <p className="page-subtitle">Отметь урок завершённым, когда будешь готов.</p>
           </div>
         </header>
 
-        {lesson.content && (
+        {sessions.length > 0 ? (
+          <div className="lesson-layout">
+            {sessions.map((s) => (
+              <div key={s.id} className="lesson-card">
+                <div className="badge">Занятие</div>
+                <h2 className="lesson-card-title">{s.title}</h2>
+                {s.content && <div className="lesson-body">{s.content}</div>}
+              </div>
+            ))}
+          </div>
+        ) : lesson.content ? (
           <div className="lesson-body">
             {lesson.content}
           </div>
+        ) : (
+          <p className="page-subtitle">В этом уроке пока нет занятий.</p>
         )}
 
         <div>
