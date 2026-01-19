@@ -1,25 +1,48 @@
-import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
 
-interface Props {
-  params: { id: string };
-}
+export default function LessonPage() {
+  const router = useRouter();
+  const { id } = router.query;
+  const [lesson, setLesson] = useState<any>(null);
 
-export default async function LessonPage({ params }: Props) {
-  const resolvedParams = await params;
-  const lessonId = resolvedParams.id;
+  useEffect(() => {
+    if (!id) return;
 
-  const { data: lesson, error } = await supabase
-    .from('lessons')
-    .select('id, title, description')
-    .eq('id', Number(lessonId))
-    .single();
+    supabase
+      .from('lessons')
+      .select('*')
+      .eq('id', id)
+      .single()
+      .then(({ data }) => setLesson(data));
+  }, [id]);
 
-  if (!lesson || error) return <p className="container">Урок не найден</p>;
+  const markCompleted = async () => {
+  const { error } = await supabase
+    .from('user_progress')
+    .upsert(
+      {
+        lesson_id: Number(id),
+        status: 'completed',
+        telegram_user_id: 0, // значение валидируется RLS
+      },
+      {
+        onConflict: 'telegram_user_id,lesson_id',
+      }
+    );
+
+  if (error) {
+    console.error(error);
+  }
+};
+
+  if (!lesson) return <div>Загрузка…</div>;
 
   return (
-    <div className="container">
+    <div>
       <h1>{lesson.title}</h1>
-      <p>{lesson.description}</p>
+      <button onClick={markCompleted}>Завершить урок</button>
     </div>
   );
 }
