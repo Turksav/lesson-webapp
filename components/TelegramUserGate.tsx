@@ -27,6 +27,8 @@ export default function TelegramUserGate({
       }
 
       const telegramUserId = tg.initDataUnsafe.user.id;
+      // Сохраняем id в глобальную область, чтобы переиспользовать в других компонентах
+      (window as any).__telegramUserId = telegramUserId;
 
       const { error } = await supabase.rpc('set_telegram_user', {
         telegram_user_id: telegramUserId,

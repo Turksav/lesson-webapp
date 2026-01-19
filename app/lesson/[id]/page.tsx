@@ -21,9 +21,11 @@ export default function LessonPage() {
 
   const markCompleted = async () => {
     const tg = (window as any)?.Telegram?.WebApp;
+    const telegramUserId =
+      (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
 
-    // Без Telegram WebApp / пользователя не пытаемся писать прогресс
-    if (!tg || !tg.initDataUnsafe?.user?.id) {
+    // Без Telegram пользователя не пытаемся писать прогресс
+    if (!telegramUserId) {
       console.warn('Cannot mark lesson completed: no Telegram user context');
       alert('Завершение урока доступно только внутри Telegram WebApp.');
       return;
@@ -35,7 +37,7 @@ export default function LessonPage() {
         {
           lesson_id: Number(id),
           status: 'completed',
-          telegram_user_id: 0, // значение валидируется RLS
+          telegram_user_id: Number(telegramUserId),
         },
         {
           onConflict: 'telegram_user_id,lesson_id',
