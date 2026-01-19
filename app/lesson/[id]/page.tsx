@@ -1,10 +1,11 @@
-import { useRouter } from 'next/router';
+ 'use client';
+
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { useParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function LessonPage() {
-  const router = useRouter();
-  const { id } = router.query;
+  const { id } = useParams<{ id: string }>();
   const [lesson, setLesson] = useState<any>(null);
 
   useEffect(() => {
