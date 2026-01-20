@@ -23,9 +23,8 @@ export default function CoursesSection() {
 
   return (
     <div className="courses-list">
-      {courses.map((course, index) => (
+      {courses.map((course) => (
         <div key={course.id} className="course-card">
-          <div className="course-number">{index + 1}</div>
           {course.image_url && (
             <div className="course-image">
               <img src={course.image_url} alt={course.title} />
