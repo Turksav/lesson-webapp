@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/lib/currencyUtils';
 
 interface CourseStats {
   course_id: number;
@@ -22,6 +23,8 @@ interface LessonProgress {
 export default function CabinetSection() {
   const [stats, setStats] = useState<CourseStats[]>([]);
   const [progress, setProgress] = useState<LessonProgress[]>([]);
+  const [balance, setBalance] = useState<number>(0);
+  const [currency, setCurrency] = useState<string>('USD');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,6 +39,27 @@ export default function CabinetSection() {
       }
 
       try {
+        // Загружаем баланс и валюту пользователя
+        const { data: balanceData, error: balanceError } = await supabase
+          .from('user_balance')
+          .select('balance')
+          .eq('telegram_user_id', Number(telegramUserId))
+          .single();
+
+        if (!balanceError && balanceData) {
+          setBalance(Number(balanceData.balance) || 0);
+        }
+
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('user_settings')
+          .select('currency')
+          .eq('telegram_user_id', Number(telegramUserId))
+          .single();
+
+        if (!settingsError && settingsData) {
+          setCurrency(settingsData.currency || 'USD');
+        }
+
         // Загружаем все уроки с их курсами
         const { data: lessonsData, error: lessonsError } = await supabase
           .from('lessons')
@@ -145,8 +169,24 @@ export default function CabinetSection() {
 
   const currentCourse = stats.length > 0 ? stats[0] : null;
 
+  const handleTopUp = () => {
+    // Пока просто заглушка - интеграция будет позже
+    alert('Функция пополнения баланса будет доступна в ближайшее время.');
+  };
+
   return (
     <div className="cabinet-content">
+      {/* Баланс */}
+      <div className="cabinet-balance">
+        <h2 className="cabinet-balance-title">Баланс</h2>
+        <div className="balance-card">
+          <div className="balance-amount">{formatCurrency(balance, currency)}</div>
+          <button className="btn btn-primary" onClick={handleTopUp}>
+            Пополнить баланс
+          </button>
+        </div>
+      </div>
+
       {/* Статистика текущего курса */}
       {currentCourse ? (
         <div className="cabinet-stats">

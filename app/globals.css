@@ -460,6 +460,35 @@ button {
   font-weight: 500;
 }
 
+.cabinet-balance {
+  margin-bottom: 32px;
+}
+
+.cabinet-balance-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #111827;
+}
+
+.balance-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(236, 72, 153, 0.05));
+  border-radius: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.balance-amount {
+  font-size: 32px;
+  font-weight: 700;
+  color: #6366f1;
+  letter-spacing: -0.02em;
+}
+
 .cabinet-table-title {
   font-size: 18px;
   font-weight: 600;
@@ -566,5 +595,15 @@ button {
   .progress-table th,
   .progress-table td {
     padding: 10px 12px;
+  }
+
+  .balance-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .balance-amount {
+    font-size: 28px;
   }
 }
