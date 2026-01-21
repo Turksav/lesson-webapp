@@ -814,6 +814,18 @@ button {
   padding: 40px 20px;
 }
 
+.consultations-table {
+  margin-top: 16px;
+  overflow-x: auto;
+  width: 100%;
+}
+
+.consultations-table .progress-table {
+  width: 100%;
+  min-width: 600px;
+  table-layout: auto;
+}
+
 /* Адаптивность */
 @media (max-width: 768px) {
   .surface {

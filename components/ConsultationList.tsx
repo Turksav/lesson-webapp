@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { formatCurrency } from '@/lib/currencyUtils';
 
 interface Consultation {
   id: number;
@@ -146,11 +145,8 @@ export default function ConsultationList({ onUpdate }: ConsultationListProps = {
         <table className="progress-table">
           <thead>
             <tr>
-              <th>Дата</th>
-              <th>Время</th>
+              <th>Дата и время</th>
               <th>Формат</th>
-              <th>Количество</th>
-              <th>Цена</th>
               <th>Комментарий</th>
               <th>Статус</th>
               <th>Действия</th>
@@ -160,14 +156,14 @@ export default function ConsultationList({ onUpdate }: ConsultationListProps = {
             {consultations.map((consultation) => (
               <tr key={consultation.id}>
                 <td>
-                  {new Date(consultation.consultation_date).toLocaleDateString('ru-RU')}
+                  {new Date(consultation.consultation_date).toLocaleDateString('ru-RU', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                  })}{' '}
+                  {consultation.consultation_time.slice(0, 5)}
                 </td>
-                <td>{consultation.consultation_time.slice(0, 5)}</td>
                 <td>{consultation.format}</td>
-                <td>{consultation.quantity}</td>
-                <td>
-                  {formatCurrency(consultation.price * consultation.quantity, consultation.currency)}
-                </td>
                 <td>{consultation.comment || '-'}</td>
                 <td>
                   <span className={`status-badge ${getStatusClass(consultation.status)}`}>

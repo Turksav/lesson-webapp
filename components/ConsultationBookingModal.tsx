@@ -37,7 +37,7 @@ export default function ConsultationBookingModal({
 }: ConsultationBookingModalProps) {
   const [prices, setPrices] = useState<ConsultationPrice[]>([]);
   const [slots, setSlots] = useState<ConsultationSlot[]>([]);
-  const [selectedQuantity, setSelectedQuantity] = useState<number>(1);
+  const selectedQuantity = 1; // Всегда 1 консультация
   const [selectedFormat, setSelectedFormat] = useState<'Zoom' | 'Telegram'>('Zoom');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
@@ -189,9 +189,10 @@ export default function ConsultationBookingModal({
   };
 
   const getTotalPrice = (): number => {
-    const price = prices.find((p) => p.quantity === selectedQuantity);
+    // Используем цену для 1 консультации
+    const price = prices.find((p) => p.quantity === 1);
     if (!price) return 0;
-    return getPriceForCurrency(price) * selectedQuantity;
+    return getPriceForCurrency(price);
   };
 
   const getDaysWithSlots = (): string[] => {
@@ -222,7 +223,8 @@ export default function ConsultationBookingModal({
     setError('');
 
     try {
-      const price = prices.find((p) => p.quantity === selectedQuantity);
+      // Всегда используем цену для 1 консультации
+      const price = prices.find((p) => p.quantity === 1);
       if (!price) {
         throw new Error('Цена не найдена');
       }
@@ -241,7 +243,7 @@ export default function ConsultationBookingModal({
         p_format: selectedFormat,
         p_consultation_date: selectedDate,
         p_consultation_time: selectedTime,
-        p_quantity: selectedQuantity,
+        p_quantity: 1,
         p_price: consultationPrice,
         p_currency: userCurrency,
         p_comment: comment || null,
@@ -278,22 +280,8 @@ export default function ConsultationBookingModal({
         {step === 'check' && (
           <>
             <h2 className="modal-title">Запись на консультацию</h2>
-            <div className="consultation-prices">
-              <label>Количество консультаций:</label>
-              <select
-                value={selectedQuantity}
-                onChange={(e) => setSelectedQuantity(Number(e.target.value))}
-                className="form-select"
-              >
-                {prices.map((p) => (
-                  <option key={p.quantity} value={p.quantity}>
-                    {p.quantity} консультация(ий) - {formatCurrency(getPriceForCurrency(p), userCurrency)} за каждую
-                  </option>
-                ))}
-              </select>
-            </div>
             <div className="consultation-total">
-              <strong>Итого: {formatCurrency(totalPrice, userCurrency)}</strong>
+              <strong>Стоимость консультации: {formatCurrency(totalPrice, userCurrency)}</strong>
               <p>Ваш баланс: {formatCurrency(userBalance, userCurrency)}</p>
               {userBalance < totalPrice && (
                 <p className="balance-warning">
