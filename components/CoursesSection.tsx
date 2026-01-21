@@ -3,26 +3,60 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import ConsultationBookingModal from './ConsultationBookingModal';
 
 export default function CoursesSection() {
   const [courses, setCourses] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [balance, setBalance] = useState<number>(0);
+  const [currency, setCurrency] = useState<string>('RUB');
 
   useEffect(() => {
-    supabase
-      .from('courses')
-      .select('*')
-      .order('id')
-      .then(({ data, error }) => {
-        if (!error) setCourses(data || []);
-      });
+    loadCourses();
+    loadUserData();
   }, []);
 
+  const loadCourses = async () => {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .order('id');
+    if (!error) setCourses(data || []);
+  };
+
+  const loadUserData = async () => {
+    const tg = (window as any)?.Telegram?.WebApp;
+    const telegramUserId =
+      (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
+
+    if (!telegramUserId) return;
+
+    const { data: balanceData } = await supabase
+      .from('user_balance')
+      .select('balance')
+      .eq('telegram_user_id', Number(telegramUserId))
+      .single();
+
+    const { data: settingsData } = await supabase
+      .from('user_settings')
+      .select('currency')
+      .eq('telegram_user_id', Number(telegramUserId))
+      .single();
+
+    if (balanceData) setBalance(Number(balanceData.balance) || 0);
+    if (settingsData) setCurrency(settingsData.currency || 'RUB');
+  };
+
   const handleConsultation = () => {
-    alert('Функция записи на личную консультацию будет доступна в ближайшее время.');
+    setIsModalOpen(true);
   };
 
   const handleDonate = () => {
     alert('Функция благодарности проекту будет доступна в ближайшее время.');
+  };
+
+  const handleModalSuccess = () => {
+    loadUserData();
   };
 
   if (courses.length === 0) {
@@ -73,6 +107,15 @@ export default function CoursesSection() {
           Благодарить проект
         </button>
       </div>
+
+      {/* Модальное окно записи на консультацию */}
+      <ConsultationBookingModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handleModalSuccess}
+        userBalance={balance}
+        userCurrency={currency}
+      />
     </>
   );
 }

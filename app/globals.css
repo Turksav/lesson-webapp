@@ -611,6 +611,197 @@ button {
   color: #6b7280;
 }
 
+/* Модальное окно */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #111827;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+/* Форма записи на консультацию */
+.consultation-prices,
+.consultation-total {
+  margin-bottom: 20px;
+}
+
+.consultation-total {
+  padding: 16px;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.consultation-total strong {
+  display: block;
+  font-size: 18px;
+  color: #6366f1;
+  margin-bottom: 8px;
+}
+
+.consultation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.form-select,
+.form-textarea {
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+.form-textarea {
+  resize: vertical;
+}
+
+.radio-group {
+  display: flex;
+  gap: 20px;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.radio-group input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.date-picker,
+.time-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.date-button,
+.time-button {
+  padding: 10px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.date-button:hover,
+.time-button:hover {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.date-button.selected,
+.time-button.selected {
+  background: #6366f1;
+  color: #ffffff;
+  border-color: #6366f1;
+}
+
+.error-message {
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 14px;
+}
+
+.success-message {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.success-message h2 {
+  font-size: 24px;
+  color: #16a34a;
+  margin-bottom: 12px;
+}
+
+.success-message p {
+  font-size: 16px;
+  color: #4b5563;
+}
+
+/* Список консультаций */
+.consultations-list {
+  margin-top: 32px;
+}
+
+.consultations-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #111827;
+}
+
+.consultations-empty {
+  margin-top: 32px;
+  text-align: center;
+  padding: 40px 20px;
+}
+
 /* Адаптивность */
 @media (max-width: 768px) {
   .surface {
@@ -684,6 +875,30 @@ button {
 
   .about-actions .btn,
   .courses-actions .btn {
+    width: 100%;
+  }
+
+  .modal-content {
+    padding: 20px 16px;
+    max-height: 95vh;
+  }
+
+  .date-picker,
+  .time-picker {
+    justify-content: center;
+  }
+
+  .date-button,
+  .time-button {
+    flex: 1;
+    min-width: calc(50% - 4px);
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions .btn {
     width: 100%;
   }
 }

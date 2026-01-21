@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import ConsultationBookingModal from './ConsultationBookingModal';
 
 interface RuleItem {
   title: string;
@@ -33,17 +35,51 @@ const rules: RuleItem[] = [
 
 export default function RulesSection() {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [balance, setBalance] = useState<number>(0);
+  const [currency, setCurrency] = useState<string>('RUB');
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    const tg = (window as any)?.Telegram?.WebApp;
+    const telegramUserId =
+      (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
+
+    if (!telegramUserId) return;
+
+    const { data: balanceData } = await supabase
+      .from('user_balance')
+      .select('balance')
+      .eq('telegram_user_id', Number(telegramUserId))
+      .single();
+
+    const { data: settingsData } = await supabase
+      .from('user_settings')
+      .select('currency')
+      .eq('telegram_user_id', Number(telegramUserId))
+      .single();
+
+    if (balanceData) setBalance(Number(balanceData.balance) || 0);
+    if (settingsData) setCurrency(settingsData.currency || 'RUB');
+  };
 
   const toggleRule = (index: number) => {
     setExpandedIndex(expandedIndex === index ? null : index);
   };
 
   const handleConsultation = () => {
-    alert('Функция записи на личную консультацию будет доступна в ближайшее время.');
+    setIsModalOpen(true);
   };
 
   const handleDonate = () => {
     alert('Функция благодарности проекту будет доступна в ближайшее время.');
+  };
+
+  const handleModalSuccess = () => {
+    loadUserData();
   };
 
   return (
@@ -101,6 +137,15 @@ export default function RulesSection() {
           Благодарить проект
         </button>
       </div>
+
+      {/* Модальное окно записи на консультацию */}
+      <ConsultationBookingModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handleModalSuccess}
+        userBalance={balance}
+        userCurrency={currency}
+      />
     </div>
   );
 }
