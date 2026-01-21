@@ -33,22 +33,77 @@ export default function TelegramUserGate({
 
   useEffect(() => {
     const init = async () => {
-      const tg = (window as any)?.Telegram?.WebApp;
+      // Функция для ожидания загрузки Telegram WebApp
+      const waitForTelegram = (): Promise<any> => {
+        return new Promise((resolve) => {
+          // Проверяем сразу
+          if ((window as any).Telegram?.WebApp) {
+            resolve((window as any).Telegram.WebApp);
+            return;
+          }
+
+          // Если не найдено, ждём до 3 секунд
+          let attempts = 0;
+          const maxAttempts = 30; // 30 попыток по 100мс = 3 секунды
+          
+          const checkInterval = setInterval(() => {
+            attempts++;
+            const tg = (window as any).Telegram?.WebApp;
+            
+            if (tg) {
+              clearInterval(checkInterval);
+              resolve(tg);
+            } else if (attempts >= maxAttempts) {
+              clearInterval(checkInterval);
+              resolve(null);
+            }
+          }, 100);
+        });
+      };
+
+      const tg = await waitForTelegram();
+      
+      // Логирование для диагностики
+      console.log('Telegram WebApp check:', {
+        hasTelegram: !!(window as any).Telegram,
+        hasWebApp: !!(window as any).Telegram?.WebApp,
+        tg: tg ? 'found' : 'not found',
+        userAgent: navigator.userAgent,
+      });
+
       // Если не в Telegram WebApp – просто продолжаем без привязки к пользователю
       if (!tg) {
-        console.warn('Telegram WebApp not detected, skipping Telegram init');
+        console.warn('Telegram WebApp not detected after waiting, skipping Telegram init');
+        console.log('Available window properties:', Object.keys(window).filter(k => k.toLowerCase().includes('telegram')));
         setReady(true);
         return;
       }
 
+      // Логируем данные Telegram для диагностики
+      console.log('Telegram WebApp data:', {
+        initDataUnsafe: tg.initDataUnsafe,
+        user: tg.initDataUnsafe?.user,
+        version: tg.version,
+        platform: tg.platform,
+      });
+
       if (!tg.initDataUnsafe?.user?.id) {
         console.warn('Telegram user not found in initData, skipping Supabase RPC');
+        console.log('Available initDataUnsafe keys:', tg.initDataUnsafe ? Object.keys(tg.initDataUnsafe) : 'null');
         setReady(true);
         return;
       }
 
       const telegramUserId = tg.initDataUnsafe.user.id;
       const userData = tg.initDataUnsafe.user;
+      
+      console.log('Processing Telegram user:', {
+        id: telegramUserId,
+        username: userData.username,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        language_code: userData.language_code,
+      });
       
       // Сохраняем id в глобальную область, чтобы переиспользовать в других компонентах
       (window as any).__telegramUserId = telegramUserId;
@@ -72,7 +127,8 @@ export default function TelegramUserGate({
 
       // Если пользователя нет, создаём его с данными из Telegram
       if (!existingUser) {
-        const { error: userError } = await supabase
+        console.log('Creating new user in database...');
+        const { data: newUser, error: userError } = await supabase
           .from('users')
           .upsert({
             telegram_user_id: telegramUserId,
@@ -81,10 +137,14 @@ export default function TelegramUserGate({
             last_name: userData.last_name || null,
             language_code: userData.language_code || null,
             is_bot: userData.is_bot || false,
-          });
+          })
+          .select();
 
         if (userError) {
           console.error('Error creating user:', userError);
+          console.error('Error details:', JSON.stringify(userError, null, 2));
+        } else {
+          console.log('User created successfully:', newUser);
         }
       } else {
         // Если пользователь существует, обновляем его данные (на случай изменения username и т.д.)
