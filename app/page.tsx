@@ -37,7 +37,7 @@ export default function Page() {
               className={`nav-tab ${activeTab === 'rules' ? 'active' : ''}`}
               onClick={() => setActiveTab('rules')}
             >
-              Правила
+              О проекте
             </button>
             <button
               className={`nav-tab ${activeTab === 'cabinet' ? 'active' : ''}`}

@@ -322,7 +322,65 @@ button {
   line-height: 1.5;
 }
 
+/* Секция "О проекте" */
+.about-section {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.about-goal {
+  padding: 24px;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.05), rgba(236, 72, 153, 0.03));
+  border-radius: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.about-goal-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 16px;
+}
+
+.about-goal-content {
+  font-size: 15px;
+  color: #4b5563;
+  line-height: 1.7;
+}
+
+.about-goal-content p {
+  margin-bottom: 12px;
+}
+
+.about-goal-content ul {
+  margin: 12px 0;
+  padding-left: 24px;
+  list-style-type: disc;
+}
+
+.about-goal-content li {
+  margin-bottom: 8px;
+}
+
+.about-actions,
+.courses-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
 /* Правила (аккордеон) */
+.rules-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 20px;
+}
+
 .rules-list {
   display: flex;
   flex-direction: column;
@@ -605,5 +663,27 @@ button {
 
   .balance-amount {
     font-size: 28px;
+  }
+
+  .about-goal {
+    padding: 20px 16px;
+  }
+
+  .about-goal-title {
+    font-size: 18px;
+  }
+
+  .about-goal-content {
+    font-size: 14px;
+  }
+
+  .about-actions,
+  .courses-actions {
+    gap: 10px;
+  }
+
+  .about-actions .btn,
+  .courses-actions .btn {
+    width: 100%;
   }
 }

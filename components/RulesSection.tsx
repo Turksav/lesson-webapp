@@ -38,23 +38,69 @@ export default function RulesSection() {
     setExpandedIndex(expandedIndex === index ? null : index);
   };
 
+  const handleConsultation = () => {
+    alert('Функция записи на личную консультацию будет доступна в ближайшее время.');
+  };
+
+  const handleDonate = () => {
+    alert('Функция благодарности проекту будет доступна в ближайшее время.');
+  };
+
   return (
-    <div className="rules-list">
-      {rules.map((rule, index) => (
-        <div key={index} className="rule-item">
-          <button
-            className={`rule-header ${expandedIndex === index ? 'expanded' : ''}`}
-            onClick={() => toggleRule(index)}
-          >
-            <span className="rule-title">{rule.title}</span>
-            <span className="rule-icon">{expandedIndex === index ? '−' : '+'}</span>
-          </button>
-          <div className={`rule-content ${expandedIndex === index ? 'expanded' : ''}`}>
-            <p className="rule-short">{rule.short}</p>
-            {expandedIndex === index && <p className="rule-full">{rule.full}</p>}
-          </div>
+    <div className="about-section">
+      {/* Текстовый блок "Цель и польза" */}
+      <div className="about-goal">
+        <h2 className="about-goal-title">Цель и польза</h2>
+        <div className="about-goal-content">
+          <p>
+            Наш проект создан для того, чтобы помочь вам развиваться и достигать своих целей. 
+            Мы предлагаем структурированные курсы по саморазвитию, которые помогут вам:
+          </p>
+          <ul>
+            <li>Развить навыки планирования и управления временем</li>
+            <li>Улучшить коммуникативные способности</li>
+            <li>Повысить личную эффективность</li>
+            <li>Достигать поставленных целей</li>
+            <li>Формировать полезные привычки</li>
+          </ul>
+          <p>
+            Все материалы разработаны практикующими экспертами и основаны на проверенных методиках. 
+            Вы можете проходить уроки в удобном для вас темпе и отслеживать свой прогресс в личном кабинете.
+          </p>
         </div>
-      ))}
+      </div>
+
+      {/* Существующий блок правил */}
+      <div>
+        <h2 className="rules-title">Правила</h2>
+        <div className="rules-list">
+          {rules.map((rule, index) => (
+          <div key={index} className="rule-item">
+            <button
+              className={`rule-header ${expandedIndex === index ? 'expanded' : ''}`}
+              onClick={() => toggleRule(index)}
+            >
+              <span className="rule-title">{rule.title}</span>
+              <span className="rule-icon">{expandedIndex === index ? '−' : '+'}</span>
+            </button>
+            <div className={`rule-content ${expandedIndex === index ? 'expanded' : ''}`}>
+              <p className="rule-short">{rule.short}</p>
+              {expandedIndex === index && <p className="rule-full">{rule.full}</p>}
+            </div>
+          </div>
+        ))}
+        </div>
+      </div>
+
+      {/* Кнопки действий */}
+      <div className="about-actions">
+        <button className="btn btn-primary" onClick={handleConsultation}>
+          Записаться на личную консультацию
+        </button>
+        <button className="btn btn-ghost" onClick={handleDonate}>
+          Благодарить проект
+        </button>
+      </div>
     </div>
   );
 }
