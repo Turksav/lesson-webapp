@@ -58,7 +58,8 @@ export default function ConsultationList({ onUpdate }: ConsultationListProps = {
     );
     const now = new Date();
     const hoursUntil = (consultationDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-    return hoursUntil > 24 && consultation.status === 'pending';
+    // Разрешаем отмену для pending и confirmed консультаций
+    return hoursUntil > 24 && (consultation.status === 'pending' || consultation.status === 'confirmed');
   };
 
   const handleCancel = async (consultationId: number) => {
