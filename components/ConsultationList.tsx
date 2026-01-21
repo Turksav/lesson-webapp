@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 
 interface Consultation {
@@ -126,14 +126,28 @@ export default function ConsultationList({ onUpdate }: ConsultationListProps = {
     }
   };
 
-  const getFormatIcon = (format: string): string => {
+  const getFormatIcon = (format: string): ReactNode => {
     switch (format) {
       case 'Zoom':
-        return '📹';
+        return (
+          <img
+            src="https://st1.zoom.us/zoom.ico"
+            alt="Zoom"
+            className="format-icon-img"
+            title="Zoom"
+          />
+        );
       case 'Telegram':
-        return '✈️';
+        return (
+          <img
+            src="https://telegram.org/favicon.ico"
+            alt="Telegram"
+            className="format-icon-img"
+            title="Telegram"
+          />
+        );
       default:
-        return '📞';
+        return <span className="format-icon-default">📞</span>;
     }
   };
 
@@ -174,9 +188,7 @@ export default function ConsultationList({ onUpdate }: ConsultationListProps = {
                   {consultation.consultation_time.slice(0, 5)}
                 </td>
                 <td className="format-icon-cell">
-                  <span className="format-icon" title={consultation.format}>
-                    {getFormatIcon(consultation.format)}
-                  </span>
+                  {getFormatIcon(consultation.format)}
                 </td>
                 <td>
                   <span className={`status-badge ${getStatusClass(consultation.status)}`}>

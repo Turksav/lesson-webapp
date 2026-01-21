@@ -852,9 +852,18 @@ button {
 
 .format-icon-cell {
   text-align: center;
+  padding: 8px 16px !important;
 }
 
-.format-icon {
+.format-icon-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.format-icon-default {
   font-size: 20px;
   display: inline-block;
   line-height: 1;
