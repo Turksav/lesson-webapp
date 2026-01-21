@@ -118,17 +118,24 @@ export default function TelegramUserGate({
         // Продолжаем даже при ошибке RPC
       }
 
-      // Проверяем, есть ли пользователь в таблице users
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('telegram_user_id')
-        .eq('telegram_user_id', telegramUserId)
-        .single();
+      // Создаём или обновляем пользователя через RPC функцию (обходит RLS безопасно)
+      console.log('Creating/updating user in database via RPC...');
+      const { error: userError } = await supabase.rpc('create_or_update_user', {
+        p_telegram_user_id: telegramUserId,
+        p_username: userData.username || null,
+        p_first_name: userData.first_name || null,
+        p_last_name: userData.last_name || null,
+        p_language_code: userData.language_code || null,
+        p_is_bot: userData.is_bot || false,
+      });
 
-      // Если пользователя нет, создаём его с данными из Telegram
-      if (!existingUser) {
-        console.log('Creating new user in database...');
-        const { data: newUser, error: userError } = await supabase
+      if (userError) {
+        console.error('Error creating/updating user via RPC:', userError);
+        console.error('Error details:', JSON.stringify(userError, null, 2));
+        
+        // Fallback: пытаемся через прямой upsert (если RPC не работает)
+        console.log('Trying fallback: direct upsert...');
+        const { error: fallbackError } = await supabase
           .from('users')
           .upsert({
             telegram_user_id: telegramUserId,
@@ -137,30 +144,15 @@ export default function TelegramUserGate({
             last_name: userData.last_name || null,
             language_code: userData.language_code || null,
             is_bot: userData.is_bot || false,
-          })
-          .select();
+          });
 
-        if (userError) {
-          console.error('Error creating user:', userError);
-          console.error('Error details:', JSON.stringify(userError, null, 2));
+        if (fallbackError) {
+          console.error('Fallback also failed:', fallbackError);
         } else {
-          console.log('User created successfully:', newUser);
+          console.log('User created/updated via fallback');
         }
       } else {
-        // Если пользователь существует, обновляем его данные (на случай изменения username и т.д.)
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({
-            username: userData.username || null,
-            first_name: userData.first_name || null,
-            last_name: userData.last_name || null,
-            language_code: userData.language_code || null,
-          })
-          .eq('telegram_user_id', telegramUserId);
-
-        if (updateError) {
-          console.error('Error updating user:', updateError);
-        }
+        console.log('User created/updated successfully via RPC');
       }
 
       // Получаем страну из Telegram (если доступна)
