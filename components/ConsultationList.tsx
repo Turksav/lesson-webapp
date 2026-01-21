@@ -126,6 +126,17 @@ export default function ConsultationList({ onUpdate }: ConsultationListProps = {
     }
   };
 
+  const getFormatIcon = (format: string): string => {
+    switch (format) {
+      case 'Zoom':
+        return '📹';
+      case 'Telegram':
+        return '✈️';
+      default:
+        return '📞';
+    }
+  };
+
   if (loading) {
     return <p className="page-subtitle">Загружаем консультации…</p>;
   }
@@ -146,8 +157,7 @@ export default function ConsultationList({ onUpdate }: ConsultationListProps = {
           <thead>
             <tr>
               <th>Дата и время</th>
-              <th>Формат</th>
-              <th>Комментарий</th>
+              <th></th>
               <th>Статус</th>
               <th>Действия</th>
             </tr>
@@ -163,8 +173,11 @@ export default function ConsultationList({ onUpdate }: ConsultationListProps = {
                   })}{' '}
                   {consultation.consultation_time.slice(0, 5)}
                 </td>
-                <td>{consultation.format}</td>
-                <td>{consultation.comment || '-'}</td>
+                <td className="format-icon-cell">
+                  <span className="format-icon" title={consultation.format}>
+                    {getFormatIcon(consultation.format)}
+                  </span>
+                </td>
                 <td>
                   <span className={`status-badge ${getStatusClass(consultation.status)}`}>
                     {getStatusLabel(consultation.status)}

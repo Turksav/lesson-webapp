@@ -822,8 +822,42 @@ button {
 
 .consultations-table .progress-table {
   width: 100%;
-  min-width: 600px;
-  table-layout: auto;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.consultations-table .progress-table th:first-child,
+.consultations-table .progress-table td:first-child {
+  width: auto;
+  min-width: 140px;
+}
+
+.consultations-table .progress-table th:nth-child(2),
+.consultations-table .progress-table td:nth-child(2) {
+  width: 50px;
+  text-align: center;
+}
+
+.consultations-table .progress-table th:nth-child(3),
+.consultations-table .progress-table td:nth-child(3) {
+  width: auto;
+  min-width: 120px;
+}
+
+.consultations-table .progress-table th:last-child,
+.consultations-table .progress-table td:last-child {
+  width: auto;
+  min-width: 100px;
+}
+
+.format-icon-cell {
+  text-align: center;
+}
+
+.format-icon {
+  font-size: 20px;
+  display: inline-block;
+  line-height: 1;
 }
 
 /* Адаптивность */
