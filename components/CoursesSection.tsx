@@ -29,22 +29,39 @@ export default function CoursesSection() {
     const telegramUserId =
       (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
 
-    if (!telegramUserId) return;
+    if (!telegramUserId) {
+      console.log('No telegram user ID, skipping balance load');
+      return;
+    }
 
-    const { data: balanceData } = await supabase
+    console.log('Loading balance for user:', telegramUserId);
+
+    const { data: balanceData, error: balanceError } = await supabase
       .from('user_balance')
       .select('balance')
       .eq('telegram_user_id', Number(telegramUserId))
       .single();
 
-    const { data: settingsData } = await supabase
+    if (balanceError) {
+      console.error('Error loading balance:', balanceError);
+    } else {
+      console.log('Balance data received:', balanceData);
+      const balanceValue = balanceData?.balance ? Number(balanceData.balance) : 0;
+      console.log('Setting balance to:', balanceValue);
+      setBalance(balanceValue);
+    }
+
+    const { data: settingsData, error: settingsError } = await supabase
       .from('user_settings')
       .select('currency')
       .eq('telegram_user_id', Number(telegramUserId))
       .single();
 
-    if (balanceData) setBalance(Number(balanceData.balance) || 0);
-    if (settingsData) setCurrency(settingsData.currency || 'RUB');
+    if (settingsError) {
+      console.error('Error loading settings:', settingsError);
+    } else if (settingsData) {
+      setCurrency(settingsData.currency || 'RUB');
+    }
   };
 
   const handleConsultation = () => {

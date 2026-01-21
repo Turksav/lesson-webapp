@@ -56,8 +56,9 @@ export default function ConsultationBookingModal({
       setSelectedTime('');
       setComment('');
       setError('');
+      console.log('Modal opened with balance:', userBalance, 'currency:', userCurrency);
     }
-  }, [isOpen]);
+  }, [isOpen, userBalance, userCurrency]);
 
   useEffect(() => {
     if (selectedDate) {
@@ -215,6 +216,11 @@ export default function ConsultationBookingModal({
             <div className="consultation-total">
               <strong>Итого: {formatCurrency(totalPrice, userCurrency)}</strong>
               <p>Ваш баланс: {formatCurrency(userBalance, userCurrency)}</p>
+              {userBalance < totalPrice && (
+                <p className="balance-warning">
+                  Недостаточно средств. Нужно пополнить на {formatCurrency(totalPrice - userBalance, userCurrency)}
+                </p>
+              )}
             </div>
             {error && <div className="error-message">{error}</div>}
             <div className="modal-actions">

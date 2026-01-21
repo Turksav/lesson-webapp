@@ -671,6 +671,18 @@ button {
   margin-bottom: 8px;
 }
 
+.consultation-total p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.balance-warning {
+  color: #dc2626 !important;
+  font-weight: 500;
+  margin-top: 8px !important;
+}
+
 .consultation-form {
   display: flex;
   flex-direction: column;
