@@ -200,33 +200,51 @@ export default function TelegramUserGate({
         console.log('User settings created/updated successfully via RPC');
       }
 
-      // Создаём или обновляем баланс пользователя через RPC функцию
-      console.log('Creating/updating user balance via RPC...');
-      const { error: balanceError } = await supabase.rpc('create_or_update_user_balance', {
-        p_telegram_user_id: telegramUserId,
-        p_balance: 0.00,
-      });
+      // Проверяем, есть ли уже баланс пользователя
+      const { data: existingBalance } = await supabase
+        .from('user_balance')
+        .select('telegram_user_id')
+        .eq('telegram_user_id', telegramUserId)
+        .single();
 
-      if (balanceError) {
-        console.error('Error creating/updating user balance via RPC:', balanceError);
-        console.error('Error details:', JSON.stringify(balanceError, null, 2));
-        
-        // Fallback: пытаемся через прямой upsert (если RPC не работает)
-        console.log('Trying fallback: direct upsert for balance...');
-        const { error: fallbackError } = await supabase
-          .from('user_balance')
-          .upsert({
-            telegram_user_id: telegramUserId,
-            balance: 0.00,
-          });
+      // Создаём баланс только если его нет
+      if (!existingBalance) {
+        console.log('Creating new user balance via RPC...');
+        // Используем функцию, которая не обновляет существующий баланс
+        const { error: balanceError } = await supabase.rpc('create_user_balance_if_not_exists', {
+          p_telegram_user_id: telegramUserId,
+          p_balance: 0.00,
+        });
 
-        if (fallbackError) {
-          console.error('Fallback also failed for balance:', fallbackError);
+        if (balanceError) {
+          console.error('Error creating user balance via RPC:', balanceError);
+          console.error('Error details:', JSON.stringify(balanceError, null, 2));
+          
+          // Fallback: пытаемся через прямой insert (если RPC не работает)
+          console.log('Trying fallback: direct insert for balance...');
+          const { error: fallbackError } = await supabase
+            .from('user_balance')
+            .insert({
+              telegram_user_id: telegramUserId,
+              balance: 0.00,
+            })
+            .select();
+
+          if (fallbackError) {
+            // Если ошибка из-за того, что запись уже существует - это нормально
+            if (fallbackError.code !== '23505') { // 23505 = unique_violation
+              console.error('Fallback also failed for balance:', fallbackError);
+            } else {
+              console.log('Balance already exists (fallback detected conflict)');
+            }
+          } else {
+            console.log('User balance created via fallback');
+          }
         } else {
-          console.log('User balance created/updated via fallback');
+          console.log('User balance created successfully via RPC');
         }
       } else {
-        console.log('User balance created/updated successfully via RPC');
+        console.log('User balance already exists, skipping creation');
       }
 
       setReady(true);
