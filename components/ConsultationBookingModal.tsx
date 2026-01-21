@@ -46,6 +46,7 @@ export default function ConsultationBookingModal({
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'check' | 'form' | 'success'>('check');
   const [error, setError] = useState<string>('');
+  const [existingConsultations, setExistingConsultations] = useState<Array<{ consultation_time: string }>>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -56,15 +57,22 @@ export default function ConsultationBookingModal({
       setSelectedTime('');
       setComment('');
       setError('');
+      setExistingConsultations([]);
       console.log('Modal opened with balance:', userBalance, 'currency:', userCurrency);
     }
   }, [isOpen, userBalance, userCurrency]);
 
   useEffect(() => {
     if (selectedDate) {
+      loadExistingConsultations();
+    }
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (selectedDate && existingConsultations.length >= 0) {
       updateAvailableTimes();
     }
-  }, [selectedDate, slots]);
+  }, [selectedDate, slots, existingConsultations]);
 
   const loadPrices = async () => {
     const { data } = await supabase
@@ -85,13 +93,84 @@ export default function ConsultationBookingModal({
     if (data) setSlots(data);
   };
 
+  const loadExistingConsultations = async () => {
+    if (!selectedDate) return;
+
+    const { data, error } = await supabase
+      .from('consultations')
+      .select('consultation_time')
+      .eq('consultation_date', selectedDate)
+      .in('status', ['pending', 'confirmed']); // Только активные консультации
+
+    if (!error && data) {
+      setExistingConsultations(data);
+    }
+  };
+
   const updateAvailableTimes = () => {
+    if (!selectedDate) {
+      setAvailableTimes([]);
+      return;
+    }
+
+    // Находим все слоты для выбранной даты
     const dateSlots = slots.filter(
       (s) => s.date === selectedDate && s.is_available
     );
-    const times = dateSlots.map((s) => s.start_time);
-    setAvailableTimes(times);
-    if (!times.includes(selectedTime)) {
+
+    if (dateSlots.length === 0) {
+      setAvailableTimes([]);
+      setSelectedTime('');
+      return;
+    }
+
+    // Генерируем все возможные часы из всех слотов
+    const allPossibleTimes = new Set<string>();
+
+    dateSlots.forEach((slot) => {
+      const startTime = new Date(`2000-01-01T${slot.start_time}`);
+      const endTime = new Date(`2000-01-01T${slot.end_time}`);
+
+      // Генерируем часы от начала до конца (не включая end_time)
+      let currentTime = new Date(startTime);
+      while (currentTime < endTime) {
+        const timeString = currentTime.toTimeString().slice(0, 5); // HH:MM
+        allPossibleTimes.add(timeString);
+        // Переходим к следующему часу
+        currentTime.setHours(currentTime.getHours() + 1);
+      }
+    });
+
+    // Получаем список занятых часов (включая час до и час после каждой консультации)
+    const blockedTimes = new Set<string>();
+
+    existingConsultations.forEach((consultation) => {
+      const consultationTime = consultation.consultation_time.slice(0, 5); // HH:MM
+      const [hours, minutes] = consultationTime.split(':').map(Number);
+      
+      // Блокируем сам час консультации
+      blockedTimes.add(consultationTime);
+      
+      // Блокируем час до консультации
+      const hourBefore = new Date(2000, 0, 1, hours - 1, minutes);
+      const hourBeforeString = hourBefore.toTimeString().slice(0, 5);
+      blockedTimes.add(hourBeforeString);
+      
+      // Блокируем час после консультации
+      const hourAfter = new Date(2000, 0, 1, hours + 1, minutes);
+      const hourAfterString = hourAfter.toTimeString().slice(0, 5);
+      blockedTimes.add(hourAfterString);
+    });
+
+    // Фильтруем доступные часы
+    const availableTimesList = Array.from(allPossibleTimes)
+      .filter((time) => !blockedTimes.has(time))
+      .sort();
+
+    setAvailableTimes(availableTimesList);
+    
+    // Сбрасываем выбранное время, если оно больше не доступно
+    if (selectedTime && !availableTimesList.includes(selectedTime)) {
       setSelectedTime('');
     }
   };
