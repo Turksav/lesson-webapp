@@ -19,6 +19,7 @@ alter table public.users add column if not exists first_name text;
 alter table public.users add column if not exists last_name text;
 alter table public.users add column if not exists language_code text;
 alter table public.users add column if not exists is_bot boolean;
+alter table public.users add column if not exists updated_at timestamptz not null default now();
 
 -- 2) Индексы
 create index if not exists users_username_idx on public.users(username);

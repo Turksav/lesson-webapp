@@ -169,16 +169,21 @@ export default function TelegramUserGate({
       // Определяем валюту по стране
       const currency = getCurrencyByCountry(countryCode);
 
-      // Проверяем, есть ли уже настройки пользователя
-      const { data: existingSettings } = await supabase
-        .from('user_settings')
-        .select('telegram_user_id')
-        .eq('telegram_user_id', telegramUserId)
-        .single();
+      // Создаём или обновляем настройки пользователя через RPC функцию
+      console.log('Creating/updating user settings via RPC...');
+      const { error: settingsError } = await supabase.rpc('create_or_update_user_settings', {
+        p_telegram_user_id: telegramUserId,
+        p_country: countryCode,
+        p_currency: currency,
+      });
 
-      // Если настроек нет, создаём их с данными из Telegram
-      if (!existingSettings) {
-        const { error: settingsError } = await supabase
+      if (settingsError) {
+        console.error('Error creating/updating user settings via RPC:', settingsError);
+        console.error('Error details:', JSON.stringify(settingsError, null, 2));
+        
+        // Fallback: пытаемся через прямой upsert (если RPC не работает)
+        console.log('Trying fallback: direct upsert for settings...');
+        const { error: fallbackError } = await supabase
           .from('user_settings')
           .upsert({
             telegram_user_id: telegramUserId,
@@ -186,29 +191,42 @@ export default function TelegramUserGate({
             currency: currency,
           });
 
-        if (settingsError) {
-          console.error('Error saving user settings:', settingsError);
+        if (fallbackError) {
+          console.error('Fallback also failed for settings:', fallbackError);
+        } else {
+          console.log('User settings created/updated via fallback');
         }
+      } else {
+        console.log('User settings created/updated successfully via RPC');
       }
 
-      // Создаём запись баланса, если её нет
-      const { data: existingBalance } = await supabase
-        .from('user_balance')
-        .select('telegram_user_id')
-        .eq('telegram_user_id', telegramUserId)
-        .single();
+      // Создаём или обновляем баланс пользователя через RPC функцию
+      console.log('Creating/updating user balance via RPC...');
+      const { error: balanceError } = await supabase.rpc('create_or_update_user_balance', {
+        p_telegram_user_id: telegramUserId,
+        p_balance: 0.00,
+      });
 
-      if (!existingBalance) {
-        const { error: balanceError } = await supabase
+      if (balanceError) {
+        console.error('Error creating/updating user balance via RPC:', balanceError);
+        console.error('Error details:', JSON.stringify(balanceError, null, 2));
+        
+        // Fallback: пытаемся через прямой upsert (если RPC не работает)
+        console.log('Trying fallback: direct upsert for balance...');
+        const { error: fallbackError } = await supabase
           .from('user_balance')
           .upsert({
             telegram_user_id: telegramUserId,
             balance: 0.00,
           });
 
-        if (balanceError) {
-          console.error('Error creating user balance:', balanceError);
+        if (fallbackError) {
+          console.error('Fallback also failed for balance:', fallbackError);
+        } else {
+          console.log('User balance created/updated via fallback');
         }
+      } else {
+        console.log('User balance created/updated successfully via RPC');
       }
 
       setReady(true);
