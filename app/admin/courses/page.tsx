@@ -12,7 +12,11 @@ interface Course {
 }
 
 export default function AdminCoursesPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState<Record<string, Set<string>>>({});
+  const [filterMenus, setFilterMenus] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
@@ -20,6 +24,7 @@ export default function AdminCoursesPage() {
     description: '',
     image_url: '',
   });
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadCourses();
@@ -29,13 +34,124 @@ export default function AdminCoursesPage() {
     const { data, error } = await supabase
       .from('courses')
       .select('*')
-      .order('id');
+      .order('id', { ascending: false });
 
     if (!error && data) {
-      setCourses(data);
+      setAllCourses(data);
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    applyFilters();
+  }, [allCourses, filters]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.admin-filter-menu') && !target.closest('.admin-filter-btn')) {
+        setFilterMenus({});
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const clearAllFilters = () => {
+    setFilters({});
+  };
+
+  const hasActiveFilters = () => {
+    return Object.keys(filters).length > 0;
+  };
+
+  const applyFilters = () => {
+    let filtered = [...allCourses];
+
+    Object.keys(filters).forEach((key) => {
+      const filterValues = filters[key];
+      if (filterValues.size > 0) {
+        filtered = filtered.filter((item) => {
+          let value: string;
+          if (key === 'id') {
+            value = item.id.toString();
+          } else if (key === 'title') {
+            value = item.title.toLowerCase();
+          } else if (key === 'description') {
+            value = (item.description || '-').toLowerCase();
+          } else {
+            value = String((item as any)[key] || '').toLowerCase();
+          }
+
+          return Array.from(filterValues).some((filterVal) =>
+            value.toLowerCase().includes(filterVal.toLowerCase())
+          );
+        });
+      }
+    });
+
+    filtered.sort((a, b) => b.id - a.id);
+    setFilteredCourses(filtered);
+    setCurrentPage(1);
+  };
+
+  const getUniqueValues = (key: string): string[] => {
+    const values = new Set<string>();
+    allCourses.forEach((item) => {
+      let value: string;
+      if (key === 'id') {
+        value = item.id.toString();
+      } else if (key === 'title') {
+        value = item.title;
+      } else if (key === 'description') {
+        value = item.description || '-';
+      } else {
+        value = String((item as any)[key] || '');
+      }
+      if (value) values.add(value);
+    });
+    return Array.from(values).sort();
+  };
+
+  const toggleFilter = (key: string, value: string) => {
+    setFilters((prev) => {
+      const newFilters = { ...prev };
+      if (!newFilters[key]) {
+        newFilters[key] = new Set();
+      }
+      const filterSet = new Set(newFilters[key]);
+      if (filterSet.has(value)) {
+        filterSet.delete(value);
+      } else {
+        filterSet.add(value);
+      }
+      if (filterSet.size === 0) {
+        delete newFilters[key];
+      } else {
+        newFilters[key] = filterSet;
+      }
+      return newFilters;
+    });
+  };
+
+  const clearFilter = (key: string) => {
+    setFilters((prev) => {
+      const newFilters = { ...prev };
+      delete newFilters[key];
+      return newFilters;
+    });
+  };
+
+  const getPaginatedData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredCourses.slice(startIndex, endIndex);
+  };
+
+  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
 
   const handleEdit = (course: Course) => {
     setEditingId(course.id);
@@ -112,15 +228,28 @@ export default function AdminCoursesPage() {
     <div className="admin-page">
       <div className="admin-page-header">
         <h1 className="admin-page-title">Управление курсами</h1>
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            setEditingId(null);
-            setFormData({ title: '', description: '', image_url: '' });
-          }}
-        >
-          + Создать курс
-        </button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button
+            className="btn btn-sm btn-ghost"
+            onClick={clearAllFilters}
+            disabled={!hasActiveFilters()}
+            style={{
+              opacity: hasActiveFilters() ? 1 : 0.5,
+              cursor: hasActiveFilters() ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Очистить фильтры
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              setEditingId(null);
+              setFormData({ title: '', description: '', image_url: '' });
+            }}
+          >
+            + Создать курс
+          </button>
+        </div>
       </div>
 
       {(editingId === null && !formData.title) || editingId !== null ? (
@@ -169,14 +298,137 @@ export default function AdminCoursesPage() {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Название</th>
-              <th>Описание</th>
+              <th>
+                <div className="admin-table-header">
+                  <span>ID</span>
+                  <button
+                    className="admin-filter-btn"
+                    onClick={() => setFilterMenus({ ...filterMenus, id: !filterMenus.id })}
+                  >
+                    🔽
+                  </button>
+                </div>
+                {filterMenus.id && (
+                  <div className="admin-filter-menu">
+                    <input
+                      type="text"
+                      placeholder="Поиск..."
+                      className="admin-filter-search"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value) {
+                          toggleFilter('id', e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                    <div className="admin-filter-options">
+                      {getUniqueValues('id').map((val) => (
+                        <label key={val} className="admin-filter-option">
+                          <input
+                            type="checkbox"
+                            checked={filters.id?.has(val) || false}
+                            onChange={() => toggleFilter('id', val)}
+                          />
+                          <span>{val}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {filters.id && filters.id.size > 0 && (
+                      <button
+                        className="admin-filter-clear"
+                        onClick={() => clearFilter('id')}
+                      >
+                        Очистить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
+              <th>
+                <div className="admin-table-header">
+                  <span>Название</span>
+                  <button
+                    className="admin-filter-btn"
+                    onClick={() => setFilterMenus({ ...filterMenus, title: !filterMenus.title })}
+                  >
+                    🔽
+                  </button>
+                </div>
+                {filterMenus.title && (
+                  <div className="admin-filter-menu">
+                    <input
+                      type="text"
+                      placeholder="Поиск..."
+                      className="admin-filter-search"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value) {
+                          toggleFilter('title', e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                    <div className="admin-filter-options">
+                      {getUniqueValues('title').map((val) => (
+                        <label key={val} className="admin-filter-option">
+                          <input
+                            type="checkbox"
+                            checked={filters.title?.has(val) || false}
+                            onChange={() => toggleFilter('title', val)}
+                          />
+                          <span>{val}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {filters.title && filters.title.size > 0 && (
+                      <button
+                        className="admin-filter-clear"
+                        onClick={() => clearFilter('title')}
+                      >
+                        Очистить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
+              <th>
+                <div className="admin-table-header">
+                  <span>Описание</span>
+                  <button
+                    className="admin-filter-btn"
+                    onClick={() => setFilterMenus({ ...filterMenus, description: !filterMenus.description })}
+                  >
+                    🔽
+                  </button>
+                </div>
+                {filterMenus.description && (
+                  <div className="admin-filter-menu">
+                    <input
+                      type="text"
+                      placeholder="Поиск..."
+                      className="admin-filter-search"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value) {
+                          toggleFilter('description', e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                    {filters.description && filters.description.size > 0 && (
+                      <button
+                        className="admin-filter-clear"
+                        onClick={() => clearFilter('description')}
+                      >
+                        Очистить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
               <th>Действия</th>
             </tr>
           </thead>
           <tbody>
-            {courses.map((course) => (
+            {getPaginatedData().map((course) => (
               <tr key={course.id}>
                 <td>{course.id}</td>
                 <td>{course.title}</td>
@@ -200,6 +452,41 @@ export default function AdminCoursesPage() {
             ))}
           </tbody>
         </table>
+        {totalPages > 1 && (
+          <div className="admin-pagination">
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+            >
+              ««
+            </button>
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              ‹
+            </button>
+            <span className="admin-pagination-info">
+              Страница {currentPage} из {totalPages}
+            </span>
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              ›
+            </button>
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+            >
+              »»
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

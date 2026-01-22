@@ -16,8 +16,12 @@ interface Course {
 }
 
 export default function AdminLessonsPage() {
-  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [allLessons, setAllLessons] = useState<Lesson[]>([]);
+  const [filteredLessons, setFilteredLessons] = useState<Lesson[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState<Record<string, Set<string>>>({});
+  const [filterMenus, setFilterMenus] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -26,6 +30,7 @@ export default function AdminLessonsPage() {
     course_id: '',
     order_index: 0,
   });
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadLessons();
@@ -36,14 +41,128 @@ export default function AdminLessonsPage() {
     const { data, error } = await supabase
       .from('lessons')
       .select('*')
-      .order('course_id', { ascending: true })
-      .order('order_index', { ascending: true });
+      .order('id', { ascending: false });
 
     if (!error && data) {
-      setLessons(data);
+      setAllLessons(data);
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    applyFilters();
+  }, [allLessons, filters, courses]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.admin-filter-menu') && !target.closest('.admin-filter-btn')) {
+        setFilterMenus({});
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const clearAllFilters = () => {
+    setFilters({});
+  };
+
+  const hasActiveFilters = () => {
+    return Object.keys(filters).length > 0;
+  };
+
+  const applyFilters = () => {
+    let filtered = [...allLessons];
+
+    Object.keys(filters).forEach((key) => {
+      const filterValues = filters[key];
+      if (filterValues.size > 0) {
+        filtered = filtered.filter((item) => {
+          let value: string;
+          if (key === 'id') {
+            value = item.id.toString();
+          } else if (key === 'title') {
+            value = item.title.toLowerCase();
+          } else if (key === 'course') {
+            value = getCourseTitle(item.course_id).toLowerCase();
+          } else if (key === 'order_index') {
+            value = item.order_index.toString();
+          } else {
+            value = String((item as any)[key] || '').toLowerCase();
+          }
+
+          return Array.from(filterValues).some((filterVal) =>
+            value.toLowerCase().includes(filterVal.toLowerCase())
+          );
+        });
+      }
+    });
+
+    filtered.sort((a, b) => b.id - a.id);
+    setFilteredLessons(filtered);
+    setCurrentPage(1);
+  };
+
+  const getUniqueValues = (key: string): string[] => {
+    const values = new Set<string>();
+    allLessons.forEach((item) => {
+      let value: string;
+      if (key === 'id') {
+        value = item.id.toString();
+      } else if (key === 'title') {
+        value = item.title;
+      } else if (key === 'course') {
+        value = getCourseTitle(item.course_id);
+      } else if (key === 'order_index') {
+        value = item.order_index.toString();
+      } else {
+        value = String((item as any)[key] || '');
+      }
+      if (value) values.add(value);
+    });
+    return Array.from(values).sort();
+  };
+
+  const toggleFilter = (key: string, value: string) => {
+    setFilters((prev) => {
+      const newFilters = { ...prev };
+      if (!newFilters[key]) {
+        newFilters[key] = new Set();
+      }
+      const filterSet = new Set(newFilters[key]);
+      if (filterSet.has(value)) {
+        filterSet.delete(value);
+      } else {
+        filterSet.add(value);
+      }
+      if (filterSet.size === 0) {
+        delete newFilters[key];
+      } else {
+        newFilters[key] = filterSet;
+      }
+      return newFilters;
+    });
+  };
+
+  const clearFilter = (key: string) => {
+    setFilters((prev) => {
+      const newFilters = { ...prev };
+      delete newFilters[key];
+      return newFilters;
+    });
+  };
+
+  const getPaginatedData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredLessons.slice(startIndex, endIndex);
+  };
+
+  const totalPages = Math.ceil(filteredLessons.length / itemsPerPage);
 
   const loadCourses = async () => {
     const { data, error } = await supabase
@@ -132,16 +251,29 @@ export default function AdminLessonsPage() {
     <div className="admin-page">
       <div className="admin-page-header">
         <h1 className="admin-page-title">Управление уроками</h1>
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            setEditingId(null);
-            setIsCreating(true);
-            setFormData({ title: '', course_id: '', order_index: 0 });
-          }}
-        >
-          + Создать урок
-        </button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button
+            className="btn btn-sm btn-ghost"
+            onClick={clearAllFilters}
+            disabled={!hasActiveFilters()}
+            style={{
+              opacity: hasActiveFilters() ? 1 : 0.5,
+              cursor: hasActiveFilters() ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Очистить фильтры
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              setEditingId(null);
+              setIsCreating(true);
+              setFormData({ title: '', course_id: '', order_index: 0 });
+            }}
+          >
+            + Создать урок
+          </button>
+        </div>
       </div>
 
       {(isCreating || editingId !== null) && (
@@ -200,15 +332,195 @@ export default function AdminLessonsPage() {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Название</th>
-              <th>Курс</th>
-              <th>Порядок</th>
+              <th>
+                <div className="admin-table-header">
+                  <span>ID</span>
+                  <button
+                    className="admin-filter-btn"
+                    onClick={() => setFilterMenus({ ...filterMenus, id: !filterMenus.id })}
+                  >
+                    🔽
+                  </button>
+                </div>
+                {filterMenus.id && (
+                  <div className="admin-filter-menu">
+                    <input
+                      type="text"
+                      placeholder="Поиск..."
+                      className="admin-filter-search"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value) {
+                          toggleFilter('id', e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                    <div className="admin-filter-options">
+                      {getUniqueValues('id').map((val) => (
+                        <label key={val} className="admin-filter-option">
+                          <input
+                            type="checkbox"
+                            checked={filters.id?.has(val) || false}
+                            onChange={() => toggleFilter('id', val)}
+                          />
+                          <span>{val}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {filters.id && filters.id.size > 0 && (
+                      <button
+                        className="admin-filter-clear"
+                        onClick={() => clearFilter('id')}
+                      >
+                        Очистить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
+              <th>
+                <div className="admin-table-header">
+                  <span>Название</span>
+                  <button
+                    className="admin-filter-btn"
+                    onClick={() => setFilterMenus({ ...filterMenus, title: !filterMenus.title })}
+                  >
+                    🔽
+                  </button>
+                </div>
+                {filterMenus.title && (
+                  <div className="admin-filter-menu">
+                    <input
+                      type="text"
+                      placeholder="Поиск..."
+                      className="admin-filter-search"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value) {
+                          toggleFilter('title', e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                    <div className="admin-filter-options">
+                      {getUniqueValues('title').map((val) => (
+                        <label key={val} className="admin-filter-option">
+                          <input
+                            type="checkbox"
+                            checked={filters.title?.has(val) || false}
+                            onChange={() => toggleFilter('title', val)}
+                          />
+                          <span>{val}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {filters.title && filters.title.size > 0 && (
+                      <button
+                        className="admin-filter-clear"
+                        onClick={() => clearFilter('title')}
+                      >
+                        Очистить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
+              <th>
+                <div className="admin-table-header">
+                  <span>Курс</span>
+                  <button
+                    className="admin-filter-btn"
+                    onClick={() => setFilterMenus({ ...filterMenus, course: !filterMenus.course })}
+                  >
+                    🔽
+                  </button>
+                </div>
+                {filterMenus.course && (
+                  <div className="admin-filter-menu">
+                    <input
+                      type="text"
+                      placeholder="Поиск..."
+                      className="admin-filter-search"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value) {
+                          toggleFilter('course', e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                    <div className="admin-filter-options">
+                      {getUniqueValues('course').map((val) => (
+                        <label key={val} className="admin-filter-option">
+                          <input
+                            type="checkbox"
+                            checked={filters.course?.has(val) || false}
+                            onChange={() => toggleFilter('course', val)}
+                          />
+                          <span>{val}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {filters.course && filters.course.size > 0 && (
+                      <button
+                        className="admin-filter-clear"
+                        onClick={() => clearFilter('course')}
+                      >
+                        Очистить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
+              <th>
+                <div className="admin-table-header">
+                  <span>Порядок</span>
+                  <button
+                    className="admin-filter-btn"
+                    onClick={() => setFilterMenus({ ...filterMenus, order_index: !filterMenus.order_index })}
+                  >
+                    🔽
+                  </button>
+                </div>
+                {filterMenus.order_index && (
+                  <div className="admin-filter-menu">
+                    <input
+                      type="text"
+                      placeholder="Поиск..."
+                      className="admin-filter-search"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value) {
+                          toggleFilter('order_index', e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                    <div className="admin-filter-options">
+                      {getUniqueValues('order_index').map((val) => (
+                        <label key={val} className="admin-filter-option">
+                          <input
+                            type="checkbox"
+                            checked={filters.order_index?.has(val) || false}
+                            onChange={() => toggleFilter('order_index', val)}
+                          />
+                          <span>{val}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {filters.order_index && filters.order_index.size > 0 && (
+                      <button
+                        className="admin-filter-clear"
+                        onClick={() => clearFilter('order_index')}
+                      >
+                        Очистить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
               <th>Действия</th>
             </tr>
           </thead>
           <tbody>
-            {lessons.map((lesson) => (
+            {getPaginatedData().map((lesson) => (
               <tr key={lesson.id}>
                 <td>{lesson.id}</td>
                 <td>{lesson.title}</td>
@@ -233,6 +545,41 @@ export default function AdminLessonsPage() {
             ))}
           </tbody>
         </table>
+        {totalPages > 1 && (
+          <div className="admin-pagination">
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+            >
+              ««
+            </button>
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              ‹
+            </button>
+            <span className="admin-pagination-info">
+              Страница {currentPage} из {totalPages}
+            </span>
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              ›
+            </button>
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+            >
+              »»
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
