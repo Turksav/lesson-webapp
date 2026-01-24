@@ -21,6 +21,7 @@ export default function VideoPlayer({ videoPath, title }: VideoPlayerProps) {
         // Здесь будет вызов к n8n для получения signed URL
         // Пока используем заглушку
         console.log('Requesting signed URL for video path:', videoPath);
+        console.log('Making request to:', '/api/get-video-url');
         
         // TODO: Заменить на реальный вызов к n8n endpoint
          const response = await fetch('/api/get-video-url', {
@@ -36,6 +37,7 @@ export default function VideoPlayer({ videoPath, title }: VideoPlayerProps) {
          }
         
          const data = await response.json();
+         console.log('Received signed URL:', data.signedUrl);
          setVideoUrl(data.signedUrl);
 
         // Временная заглушка - показываем placeholder
