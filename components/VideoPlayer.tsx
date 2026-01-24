@@ -23,24 +23,24 @@ export default function VideoPlayer({ videoPath, title }: VideoPlayerProps) {
         console.log('Requesting signed URL for video path:', videoPath);
         
         // TODO: Заменить на реальный вызов к n8n endpoint
-        // const response = await fetch('/api/get-video-url', {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //   },
-        //   body: JSON.stringify({ videoPath }),
-        // });
+         const response = await fetch('/api/get-video-url', {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+           },
+           body: JSON.stringify({ videoPath }),
+         });
         
-        // if (!response.ok) {
-        //   throw new Error('Failed to get video URL');
-        // }
+         if (!response.ok) {
+           throw new Error('Failed to get video URL');
+         }
         
-        // const data = await response.json();
-        // setVideoUrl(data.signedUrl);
+         const data = await response.json();
+         setVideoUrl(data.signedUrl);
 
         // Временная заглушка - показываем placeholder
-        setVideoUrl('');
-        setError('Видео временно недоступно. Интеграция с n8n в процессе настройки.');
+        //setVideoUrl('');
+        //setError('Видео временно недоступно. Интеграция с n8n в процессе настройки.');
         
       } catch (err: any) {
         console.error('Error getting video URL:', err);
