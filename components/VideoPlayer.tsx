@@ -108,7 +108,6 @@ export default function VideoPlayer({ videoPath, title }: VideoPlayerProps) {
         controls
         preload="metadata"
         className="video-player"
-        poster="/placeholder-video.jpg"
       >
         <source src={videoUrl} type="video/mp4" />
         <p>Ваш браузер не поддерживает воспроизведение видео.</p>
