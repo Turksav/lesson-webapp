@@ -8,6 +8,7 @@ interface Lesson {
   title: string;
   course_id: number | null;
   order_index: number;
+  video_path: string | null;
 }
 
 interface Course {
@@ -29,6 +30,7 @@ export default function AdminLessonsPage() {
     title: '',
     course_id: '',
     order_index: 0,
+    video_path: '',
   });
   const itemsPerPage = 10;
 
@@ -91,6 +93,8 @@ export default function AdminLessonsPage() {
             value = getCourseTitle(item.course_id).toLowerCase();
           } else if (key === 'order_index') {
             value = item.order_index.toString();
+          } else if (key === 'video_path') {
+            value = item.video_path ? 'Есть видео' : 'Нет видео';
           } else {
             value = String((item as any)[key] || '').toLowerCase();
           }
@@ -119,6 +123,8 @@ export default function AdminLessonsPage() {
         value = getCourseTitle(item.course_id);
       } else if (key === 'order_index') {
         value = item.order_index.toString();
+      } else if (key === 'video_path') {
+        value = item.video_path ? 'Есть видео' : 'Нет видео';
       } else {
         value = String((item as any)[key] || '');
       }
@@ -182,13 +188,14 @@ export default function AdminLessonsPage() {
       title: lesson.title,
       course_id: lesson.course_id?.toString() || '',
       order_index: lesson.order_index,
+      video_path: lesson.video_path || '',
     });
   };
 
   const handleCancel = () => {
     setEditingId(null);
     setIsCreating(false);
-    setFormData({ title: '', course_id: '', order_index: 0 });
+    setFormData({ title: '', course_id: '', order_index: 0, video_path: '' });
   };
 
   const handleSave = async () => {
@@ -208,6 +215,7 @@ export default function AdminLessonsPage() {
         p_title: formData.title,
         p_course_id: formData.course_id ? Number(formData.course_id) : null,
         p_order_index: formData.order_index,
+        p_video_path: formData.video_path || null,
       });
 
       if (error) throw error;
@@ -268,7 +276,7 @@ export default function AdminLessonsPage() {
             onClick={() => {
               setEditingId(null);
               setIsCreating(true);
-              setFormData({ title: '', course_id: '', order_index: 0 });
+              setFormData({ title: '', course_id: '', order_index: 0, video_path: '' });
             }}
           >
             + Создать урок
@@ -316,6 +324,19 @@ export default function AdminLessonsPage() {
               className="form-input"
               min="0"
             />
+          </div>
+          <div className="form-group">
+            <label>Путь к видео (необязательно)</label>
+            <input
+              type="text"
+              value={formData.video_path}
+              onChange={(e) => setFormData({ ...formData, video_path: e.target.value })}
+              className="form-input"
+              placeholder="Путь к файлу в bucket lesson-videos"
+            />
+            <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+              Например: lesson-1/intro.mp4
+            </small>
           </div>
           <div className="admin-form-actions">
             <button className="btn btn-ghost" onClick={handleCancel}>
@@ -516,6 +537,40 @@ export default function AdminLessonsPage() {
                   </div>
                 )}
               </th>
+              <th>
+                <div className="admin-table-header">
+                  <span>Видео</span>
+                  <button
+                    className="admin-filter-btn"
+                    onClick={() => setFilterMenus({ ...filterMenus, video_path: !filterMenus.video_path })}
+                  >
+                    🔽
+                  </button>
+                </div>
+                {filterMenus.video_path && (
+                  <div className="admin-filter-menu">
+                    <input
+                      type="text"
+                      placeholder="Поиск..."
+                      className="admin-filter-search"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value) {
+                          toggleFilter('video_path', e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                    {filters.video_path && filters.video_path.size > 0 && (
+                      <button
+                        className="admin-filter-clear"
+                        onClick={() => clearFilter('video_path')}
+                      >
+                        Очистить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
               <th>Действия</th>
             </tr>
           </thead>
@@ -526,6 +581,13 @@ export default function AdminLessonsPage() {
                 <td>{lesson.title}</td>
                 <td>{getCourseTitle(lesson.course_id)}</td>
                 <td>{lesson.order_index}</td>
+                <td>
+                  {lesson.video_path ? (
+                    <span style={{ color: '#16a34a', fontSize: '12px' }}>✓ Есть видео</span>
+                  ) : (
+                    <span style={{ color: '#dc2626', fontSize: '12px' }}>✗ Нет видео</span>
+                  )}
+                </td>
                 <td>
                   <button
                     className="btn btn-sm btn-ghost"

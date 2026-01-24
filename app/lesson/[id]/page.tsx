@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import VideoPlayer from '@/components/VideoPlayer';
 
 export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
@@ -92,6 +93,12 @@ export default function LessonPage() {
             <p className="page-subtitle">Отметь урок завершённым, когда будешь готов.</p>
           </div>
         </header>
+
+        {lesson.video_path && (
+          <div className="lesson-video-section">
+            <VideoPlayer videoPath={lesson.video_path} title={lesson.title} />
+          </div>
+        )}
 
         {sessions.length > 0 ? (
           <div className="lesson-layout">
