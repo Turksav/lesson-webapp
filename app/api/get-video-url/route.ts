@@ -30,9 +30,18 @@ export async function POST(request: NextRequest) {
     const kinescopeApiKey = process.env.KINESCOPE_API_KEY;
     const kinescopeProjectId = process.env.KINESCOPE_PROJECT_ID;
     
+    console.log('🔍 Environment check:', {
+      hasApiKey: !!kinescopeApiKey,
+      hasProjectId: !!kinescopeProjectId,
+      apiKeyLength: kinescopeApiKey?.length || 0,
+      projectIdLength: kinescopeProjectId?.length || 0,
+    });
+    
     if (!kinescopeApiKey || !kinescopeProjectId) {
       console.error('❌ Missing Kinescope credentials');
-      throw new Error('Kinescope API credentials not configured');
+      console.error('❌ KINESCOPE_API_KEY:', kinescopeApiKey ? 'SET' : 'NOT SET');
+      console.error('❌ KINESCOPE_PROJECT_ID:', kinescopeProjectId ? 'SET' : 'NOT SET');
+      throw new Error('Kinescope API credentials not configured. Please check .env.local file and restart the server.');
     }
 
     console.log('🔗 Using Kinescope API integration');
