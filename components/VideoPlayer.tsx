@@ -44,7 +44,8 @@ export default function VideoPlayer({ videoPath, title }: VideoPlayerProps) {
         
       } catch (err: any) {
         console.error('Error getting video URL:', err);
-        setError('Не удалось загрузить видео');
+        console.error('Error details:', err.message);
+        setError(`Не удалось загрузить видео: ${err.message}`);
       } finally {
         setLoading(false);
       }

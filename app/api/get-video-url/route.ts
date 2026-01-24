@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error in get-video-url API:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }
