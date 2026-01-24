@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Выбор между n8n и прямой интеграцией с Supabase
-      const USE_N8N = false; // Измените на true для использования n8n
+      const USE_N8N = true; // Измените на true для использования n8n
 
     if (USE_N8N) {
       // n8n интеграция
