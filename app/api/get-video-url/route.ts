@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     // TODO: Здесь будет интеграция с n8n для получения signed URL
     // Например:
-     const n8nResponse = await fetch('YOUR_N8N_WEBHOOK_URL', {
+     const n8nResponse = await fetch('https://maximilian-septal-hyperprophetically.ngrok-free.dev/webhook-test/generate-video-url', {
        method: 'POST',
        headers: {
          'Content-Type': 'application/json',
