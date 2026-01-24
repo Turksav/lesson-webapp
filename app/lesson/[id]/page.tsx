@@ -94,9 +94,9 @@ export default function LessonPage() {
           </div>
         </header>
 
-        {lesson.video_path && (
+        {lesson.kinescope_video_id && (
           <div className="lesson-video-section">
-            <VideoPlayer videoPath={lesson.video_path} title={lesson.title} />
+            <VideoPlayer kinescopeVideoId={lesson.kinescope_video_id} title={lesson.title} />
           </div>
         )}
 

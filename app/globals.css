@@ -1365,6 +1365,24 @@ button {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+.kinescope-player-wrapper {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  background: #000000;
+}
+
+.kinescope-player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+}
+
 .video-player {
   width: 100%;
   height: auto;
@@ -1429,6 +1447,29 @@ button {
   font-weight: 500;
 }
 
+.video-meta {
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.video-duration {
+  opacity: 0.8;
+}
+
+.retry-button {
+  transition: all 0.2s ease;
+}
+
+.retry-button:hover {
+  background: #5048e5 !important;
+  transform: translateY(-1px);
+}
+
 .lesson-video-section {
   margin: 24px 0;
 }
@@ -1452,6 +1493,11 @@ button {
     max-height: 250px;
   }
   
+  .kinescope-player-wrapper {
+    padding-bottom: 56.25%; /* Maintain 16:9 ratio on mobile */
+    border-radius: 8px;
+  }
+  
   .video-placeholder {
     padding: 24px 16px;
     min-height: 150px;
@@ -1465,6 +1511,72 @@ button {
   .video-placeholder p {
     font-size: 14px;
   }
+  
+  .video-title {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+  
+  .video-meta {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .retry-button {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+}
+
+/* Additional responsive breakpoints for Kinescope player */
+@media (max-width: 480px) {
+  .video-player-container {
+    margin: 16px 0;
+    border-radius: 8px;
+  }
+  
+  .kinescope-player-wrapper {
+    padding-bottom: 62.5%; /* Slightly more vertical on very small screens */
+  }
+}
+
+/* High-DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .video-placeholder-icon,
+  .video-error-icon {
+    font-size: 44px;
+  }
+}
+
+/* Dark mode support for video player */
+@media (prefers-color-scheme: dark) {
+  .video-placeholder {
+    background: #1f2937;
+    border-color: #374151;
+    color: #d1d5db;
+  }
+  
+  .video-placeholder.loading {
+    background: #111827;
+    border-color: #6366f1;
+  }
+  
+  .video-placeholder.error {
+    background: #7f1d1d;
+    border-color: #fca5a5;
+    color: #fecaca;
+  }
+}
+
+/* Focus styles for accessibility */
+.kinescope-player:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+.retry-button:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
 }
 
 .admin-login-form {

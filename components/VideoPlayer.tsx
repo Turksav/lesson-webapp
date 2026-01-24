@@ -3,49 +3,67 @@
 import { useEffect, useState } from 'react';
 
 interface VideoPlayerProps {
-  videoPath: string;
+  kinescopeVideoId: string;
   title?: string;
 }
 
-export default function VideoPlayer({ videoPath, title }: VideoPlayerProps) {
-  const [videoUrl, setVideoUrl] = useState<string>('');
+interface KinescopeVideoData {
+  embedUrl: string;
+  videoId: string;
+  title: string;
+  duration: number;
+  thumbnail: string | null;
+  status: string;
+}
+
+export default function VideoPlayer({ kinescopeVideoId, title }: VideoPlayerProps) {
+  const [videoData, setVideoData] = useState<KinescopeVideoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    const getSignedUrl = async () => {
+    const getKinescopeVideo = async () => {
       try {
         setLoading(true);
         setError('');
 
-        // Здесь будет вызов к n8n для получения signed URL
-        // Пока используем заглушку
-        console.log('Requesting signed URL for video path:', videoPath);
+        console.log('Requesting Kinescope video for ID:', kinescopeVideoId);
         console.log('Making request to:', '/api/get-video-url');
         
-        // TODO: Заменить на реальный вызов к n8n endpoint
-         const response = await fetch('/api/get-video-url', {
-           method: 'POST',
-           headers: {
-             'Content-Type': 'application/json',
-           },
-           body: JSON.stringify({ videoPath }),
-         });
+        const response = await fetch('/api/get-video-url', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ videoId: kinescopeVideoId }),
+        });
         
-         if (!response.ok) {
-           throw new Error('Failed to get video URL');
-         }
-        
-         const data = await response.json();
-         console.log('Received signed URL:', data.signedUrl);
-         setVideoUrl(data.signedUrl);
-
-        // Временная заглушка - показываем placeholder
-        //setVideoUrl('');
-        //setError('Видео временно недоступно. Интеграция с n8n в процессе настройки.');
+        if (response.status === 202) {
+          // Video is still processing
+          const data = await response.json();
+          console.log('Video is processing, status:', data.status);
+          setError(`Видео обрабатывается (статус: ${data.status}). Попробуйте позже.`);
+          
+          // Retry after 5 seconds, max 3 retries
+          if (retryCount < 3) {
+            setTimeout(() => {
+              setRetryCount(prev => prev + 1);
+            }, 5000);
+            return;
+          }
+        } else if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        } else {
+          const data: KinescopeVideoData = await response.json();
+          console.log('Received Kinescope video data:', data.title);
+          setVideoData(data);
+          setRetryCount(0); // Reset retry count on success
+        }
         
       } catch (err: any) {
-        console.error('Error getting video URL:', err);
+        console.error('Error getting Kinescope video:', err);
         console.error('Error details:', err.message);
         setError(`Не удалось загрузить видео: ${err.message}`);
       } finally {
@@ -53,13 +71,13 @@ export default function VideoPlayer({ videoPath, title }: VideoPlayerProps) {
       }
     };
 
-    if (videoPath) {
-      getSignedUrl();
+    if (kinescopeVideoId) {
+      getKinescopeVideo();
     } else {
       setLoading(false);
-      setError('Путь к видео не указан');
+      setError('Kinescope Video ID не указан');
     }
-  }, [videoPath]);
+  }, [kinescopeVideoId, retryCount]);
 
   if (loading) {
     return (
@@ -67,7 +85,12 @@ export default function VideoPlayer({ videoPath, title }: VideoPlayerProps) {
         <div className="video-placeholder loading">
           <div className="video-placeholder-content">
             <div className="spinner"></div>
-            <p>Загружаем видео...</p>
+            <p>
+              {retryCount > 0 
+                ? `Загружаем видео... (попытка ${retryCount + 1}/4)`
+                : 'Загружаем видео...'
+              }
+            </p>
           </div>
         </div>
       </div>
@@ -81,21 +104,39 @@ export default function VideoPlayer({ videoPath, title }: VideoPlayerProps) {
           <div className="video-placeholder-content">
             <div className="video-error-icon">📹</div>
             <p>{error}</p>
-            <small>Путь: {videoPath}</small>
+            <small>Video ID: {kinescopeVideoId}</small>
+            {retryCount < 3 && error.includes('обрабатывается') && (
+              <button 
+                className="retry-button"
+                onClick={() => setRetryCount(prev => prev + 1)}
+                style={{
+                  marginTop: '12px',
+                  padding: '8px 16px',
+                  background: '#6366f1',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Повторить попытку
+              </button>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
-  if (!videoUrl) {
+  if (!videoData) {
     return (
       <div className="video-player-container">
         <div className="video-placeholder">
           <div className="video-placeholder-content">
             <div className="video-placeholder-icon">🎬</div>
-            <p>Видео будет доступно после настройки n8n интеграции</p>
-            <small>Путь: {videoPath}</small>
+            <p>Видео недоступно</p>
+            <small>Video ID: {kinescopeVideoId}</small>
           </div>
         </div>
       </div>
@@ -104,15 +145,26 @@ export default function VideoPlayer({ videoPath, title }: VideoPlayerProps) {
 
   return (
     <div className="video-player-container">
-      <video
-        controls
-        preload="metadata"
-        className="video-player"
-      >
-        <source src={videoUrl} type="video/mp4" />
-        <p>Ваш браузер не поддерживает воспроизведение видео.</p>
-      </video>
-      {title && <div className="video-title">{title}</div>}
+      <div className="kinescope-player-wrapper">
+        <iframe
+          src={videoData.embedUrl}
+          className="kinescope-player"
+          allowFullScreen
+          allow="autoplay; encrypted-media; picture-in-picture"
+          frameBorder="0"
+          title={title || videoData.title || 'Видео урока'}
+        />
+      </div>
+      {(title || videoData.title) && (
+        <div className="video-title">{title || videoData.title}</div>
+      )}
+      {videoData.duration > 0 && (
+        <div className="video-meta">
+          <span className="video-duration">
+            Длительность: {Math.floor(videoData.duration / 60)}:{String(videoData.duration % 60).padStart(2, '0')}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

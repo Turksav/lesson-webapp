@@ -1,107 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+
+interface KinescopeVideoData {
+  id: string;
+  title: string;
+  status: string;
+  duration: number;
+  embed_url: string;
+  thumbnail: {
+    url: string;
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🎬 API /get-video-url called');
+    console.log('🎬 Kinescope API /get-video-url called');
     
-    const { videoPath } = await request.json();
-    console.log('📁 Video path requested:', videoPath);
+    const { videoId } = await request.json();
+    console.log('📁 Kinescope Video ID requested:', videoId);
 
-    if (!videoPath) {
-      console.log('❌ No video path provided');
+    if (!videoId) {
+      console.log('❌ No video ID provided');
       return NextResponse.json(
-        { error: 'Video path is required' },
+        { error: 'Kinescope video ID is required' },
         { status: 400 }
       );
     }
 
-    // Выбор между n8n и прямой интеграцией с Supabase
-      const USE_N8N = true; // Измените на true для использования n8n
+    // Проверяем переменные окружения
+    const kinescopeApiKey = process.env.KINESCOPE_API_KEY;
+    const kinescopeProjectId = process.env.KINESCOPE_PROJECT_ID;
+    
+    if (!kinescopeApiKey || !kinescopeProjectId) {
+      console.error('❌ Missing Kinescope credentials');
+      throw new Error('Kinescope API credentials not configured');
+    }
 
-    if (USE_N8N) {
-      // n8n интеграция
-        const n8nWebhookUrl = 'https://maximilian-septal-hyperprophetically.ngrok-free.dev/webhook-test/generate-video-url';
-      console.log('🔗 Using n8n webhook:', n8nWebhookUrl);
+    console.log('🔗 Using Kinescope API integration');
+    console.log('📤 Project ID:', kinescopeProjectId);
+    console.log('📤 Video ID:', videoId);
 
-      const requestBody = {
-        bucket: 'lesson-videos',
-        path: videoPath,
-        expiresIn: 3600, // 1 час
-      };
-      console.log('📤 Request body:', JSON.stringify(requestBody));
-
-      const n8nResponse = await fetch(n8nWebhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+    // Получаем данные о видео из Kinescope API
+    const kinescopeApiUrl = `https://api.kinescope.io/v1/projects/${kinescopeProjectId}/videos/${videoId}`;
+    
+    const kinescopeResponse = await fetch(kinescopeApiUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${kinescopeApiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('📥 Kinescope API response status:', kinescopeResponse.status);
+    
+    if (!kinescopeResponse.ok) {
+      const errorText = await kinescopeResponse.text();
+      console.error('❌ Kinescope API error:', errorText);
       
-      console.log('📥 n8n response status:', n8nResponse.status);
-      
-      if (!n8nResponse.ok) {
-        const errorText = await n8nResponse.text();
-        console.error('❌ n8n response error:', errorText);
-        throw new Error(`n8n webhook failed with status ${n8nResponse.status}: ${errorText}`);
+      if (kinescopeResponse.status === 404) {
+        throw new Error(`Video not found: ${videoId}`);
+      } else if (kinescopeResponse.status === 401) {
+        throw new Error('Invalid Kinescope API credentials');
+      } else {
+        throw new Error(`Kinescope API failed with status ${kinescopeResponse.status}: ${errorText}`);
       }
-      
-      const data = await n8nResponse.json();
-      console.log('✅ n8n response:', data);
-      
-      if (!data.signedUrl) {
-        throw new Error('No signedUrl in n8n response');
-      }
-      
-      // Проверяем, нужно ли добавить базовый URL
-      let fullSignedUrl = data.signedUrl;
-      if (data.signedUrl.startsWith('/object/sign/')) {
-        // Добавляем базовый URL Supabase
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        if (!supabaseUrl) {
-          throw new Error('NEXT_PUBLIC_SUPABASE_URL not configured');
-        }
-        fullSignedUrl = `${supabaseUrl}/storage/v1${data.signedUrl}`;
-        console.log('🔗 Fixed relative URL to full URL:', fullSignedUrl);
-      }
-      
-      return NextResponse.json({ signedUrl: fullSignedUrl });
-      
-    } else {
-      // Прямая интеграция с Supabase
-      console.log('🔗 Using direct Supabase integration');
-      
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      
-      if (!supabaseUrl || !supabaseServiceKey) {
-        throw new Error('Missing Supabase credentials in environment variables');
-      }
-      
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
-      console.log('📤 Creating signed URL for:', videoPath);
-      
-      const { data, error } = await supabase.storage
-        .from('lesson-videos')
-        .createSignedUrl(videoPath, 3600); // 1 час
-      
-      if (error) {
-        console.error('❌ Supabase error:', error);
-        throw new Error(`Supabase Storage error: ${error.message}`);
-      }
-      
-      if (!data?.signedUrl) {
-        throw new Error('No signed URL returned from Supabase');
-      }
-      
-      console.log('✅ Generated signed URL:', data.signedUrl);
-      return NextResponse.json({ signedUrl: data.signedUrl });
     }
     
+    const videoData: { data: KinescopeVideoData } = await kinescopeResponse.json();
+    console.log('✅ Kinescope video data received:', videoData.data.title);
+    
+    const video = videoData.data;
+    
+    // Проверяем статус видео
+    if (video.status !== 'ready') {
+      console.log('⚠️ Video not ready, status:', video.status);
+      return NextResponse.json({
+        error: 'Video is not ready for playback',
+        status: video.status,
+        videoId: videoId
+      }, { status: 202 }); // 202 Accepted - processing
+    }
+    
+    // Генерируем secure embed URL с настройками плеера
+    const embedUrl = new URL(video.embed_url);
+    
+    // Добавляем параметры для адаптивного качества и кастомизации плеера
+    embedUrl.searchParams.set('auto', '1'); // Автопроигрывание (можно отключить)
+    embedUrl.searchParams.set('muted', '0'); // Не мутить по умолчанию
+    embedUrl.searchParams.set('loop', '0'); // Не зацикливать
+    embedUrl.searchParams.set('controls', '1'); // Показывать контролы
+    embedUrl.searchParams.set('title', '0'); // Скрыть заголовок
+    embedUrl.searchParams.set('speed', '1'); // Разрешить изменение скорости
+    embedUrl.searchParams.set('pip', '1'); // Picture-in-picture
+    embedUrl.searchParams.set('dnt', '1'); // Do not track
+    
+    const finalEmbedUrl = embedUrl.toString();
+    console.log('🎉 Generated secure embed URL');
+    
+    return NextResponse.json({
+      embedUrl: finalEmbedUrl,
+      videoId: video.id,
+      title: video.title,
+      duration: video.duration,
+      thumbnail: video.thumbnail?.url || null,
+      status: video.status
+    });
+    
   } catch (error) {
-    console.error('💥 Error in get-video-url API:', error);
+    console.error('💥 Error in Kinescope get-video-url API:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('💥 Error message:', errorMessage);
     
