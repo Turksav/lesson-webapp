@@ -54,7 +54,19 @@ export async function POST(request: NextRequest) {
         throw new Error('No signedUrl in n8n response');
       }
       
-      return NextResponse.json({ signedUrl: data.signedUrl });
+      // Проверяем, нужно ли добавить базовый URL
+      let fullSignedUrl = data.signedUrl;
+      if (data.signedUrl.startsWith('/object/sign/')) {
+        // Добавляем базовый URL Supabase
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (!supabaseUrl) {
+          throw new Error('NEXT_PUBLIC_SUPABASE_URL not configured');
+        }
+        fullSignedUrl = `${supabaseUrl}/storage/v1${data.signedUrl}`;
+        console.log('🔗 Fixed relative URL to full URL:', fullSignedUrl);
+      }
+      
+      return NextResponse.json({ signedUrl: fullSignedUrl });
       
     } else {
       // Прямая интеграция с Supabase
