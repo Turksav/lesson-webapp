@@ -28,28 +28,23 @@ export async function POST(request: NextRequest) {
 
     // Проверяем переменные окружения
     const kinescopeApiKey = process.env.KINESCOPE_API_KEY;
-    const kinescopeProjectId = process.env.KINESCOPE_PROJECT_ID;
     
     console.log('🔍 Environment check:', {
       hasApiKey: !!kinescopeApiKey,
-      hasProjectId: !!kinescopeProjectId,
       apiKeyLength: kinescopeApiKey?.length || 0,
-      projectIdLength: kinescopeProjectId?.length || 0,
     });
     
-    if (!kinescopeApiKey || !kinescopeProjectId) {
-      console.error('❌ Missing Kinescope credentials');
-      console.error('❌ KINESCOPE_API_KEY:', kinescopeApiKey ? 'SET' : 'NOT SET');
-      console.error('❌ KINESCOPE_PROJECT_ID:', kinescopeProjectId ? 'SET' : 'NOT SET');
-      throw new Error('Kinescope API credentials not configured. Please check .env.local file and restart the server.');
+    if (!kinescopeApiKey) {
+      console.error('❌ Missing Kinescope API key');
+      throw new Error('Kinescope API key not configured. Please check .env.local file and restart the server.');
     }
 
     console.log('🔗 Using Kinescope API integration');
-    console.log('📤 Project ID:', kinescopeProjectId);
     console.log('📤 Video ID:', videoId);
 
     // Получаем данные о видео из Kinescope API
-    const kinescopeApiUrl = `https://api.kinescope.io/v1/projects/${kinescopeProjectId}/videos/${videoId}`;
+    // Используем прямой endpoint для видео (не через project)
+    const kinescopeApiUrl = `https://api.kinescope.io/v1/videos/${videoId}`;
     
     const kinescopeResponse = await fetch(kinescopeApiUrl, {
       method: 'GET',
@@ -74,10 +69,19 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    const videoData: { data: KinescopeVideoData } = await kinescopeResponse.json();
-    console.log('✅ Kinescope video data received:', videoData.data.title);
+    const responseData = await kinescopeResponse.json();
+    console.log('✅ Kinescope API response:', JSON.stringify(responseData, null, 2));
     
-    const video = videoData.data;
+    // Kinescope API может возвращать данные в разных форматах
+    // Проверяем оба варианта: { data: {...} } или прямой объект
+    const video: KinescopeVideoData = responseData.data || responseData;
+    
+    if (!video || !video.id) {
+      console.error('❌ Invalid video data structure:', responseData);
+      throw new Error('Invalid response format from Kinescope API');
+    }
+    
+    console.log('✅ Kinescope video data received:', video.title || video.id);
     
     // Проверяем статус видео
     if (video.status !== 'ready') {
