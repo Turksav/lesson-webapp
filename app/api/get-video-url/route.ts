@@ -1,3 +1,8 @@
+/**
+ * @deprecated Этот endpoint больше не используется.
+ * VideoPlayer теперь использует прямой embed URL: https://kinescope.io/embed/{videoId}
+ * Можно удалить этот файл, если он больше нигде не используется.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 
 interface KinescopeVideoData {
@@ -12,8 +17,11 @@ interface KinescopeVideoData {
 }
 
 export async function POST(request: NextRequest) {
+  // DEPRECATED: Используйте прямой embed URL вместо этого endpoint
+  console.warn('⚠️ DEPRECATED: /api/get-video-url is deprecated. Use direct embed: https://kinescope.io/embed/{videoId}');
+  
   try {
-    console.log('🎬 Kinescope API /get-video-url called');
+    console.log('🎬 Kinescope API /get-video-url called (DEPRECATED)');
     
     const { videoId } = await request.json();
     console.log('📁 Kinescope Video ID requested:', videoId);
