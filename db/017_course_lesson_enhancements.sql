@@ -200,9 +200,9 @@ DECLARE
   v_active_enrollment bigint;
   v_enrollment_id bigint;
 BEGIN
-  -- Проверяем, что пользователь аутентифицирован через Supabase Auth
-  IF auth.uid() IS NULL then
-    RAISE EXCEPTION 'Требуется аутентификация';
+  -- Проверяем, что передан telegram_user_id
+  IF p_telegram_user_id IS NULL then
+    RAISE EXCEPTION 'Требуется telegram_user_id';
   END IF;
 
   -- Получаем стоимость курса

@@ -48,15 +48,19 @@ export default function CourseLessonsPage() {
 
     if (telegramUserId) {
       // Загружаем enrollment
-      const { data: enrollmentData } = await supabase
+      const { data: enrollmentData, error: enrollmentError } = await supabase
         .from('user_course_enrollments')
         .select('*')
         .eq('telegram_user_id', Number(telegramUserId))
         .eq('course_id', Number(id))
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
-      if (enrollmentData) setEnrollment(enrollmentData);
+      if (!enrollmentError && enrollmentData) {
+        setEnrollment(enrollmentData);
+      } else {
+        setEnrollment(null);
+      }
 
       // Загружаем баланс и валюту
       const { data: balanceData } = await supabase
@@ -103,8 +107,23 @@ export default function CourseLessonsPage() {
         throw error;
       }
 
-      alert('Курс успешно начат!');
-      loadData();
+      // Загружаем enrollment сразу после успешного начала курса
+      const { data: newEnrollment } = await supabase
+        .from('user_course_enrollments')
+        .select('*')
+        .eq('telegram_user_id', Number(telegramUserId))
+        .eq('course_id', Number(id))
+        .eq('status', 'active')
+        .maybeSingle();
+      
+      if (newEnrollment) {
+        setEnrollment(newEnrollment);
+        // Обновляем остальные данные
+        await loadData();
+      } else {
+        // Если enrollment не найден сразу, перезагружаем все данные
+        await loadData();
+      }
     } catch (error: any) {
       console.error('Error starting course:', error);
       alert(error.message || 'Не удалось начать курс. Попробуйте позже.');
