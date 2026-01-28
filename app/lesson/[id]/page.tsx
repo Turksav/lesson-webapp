@@ -15,6 +15,8 @@ export default function LessonPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState<any>(null);
+  const [editableAnswer, setEditableAnswer] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -22,61 +24,86 @@ export default function LessonPage() {
   }, [id]);
 
   const loadLessonData = async () => {
-    setLoading(true);
-    const tg = (window as any)?.Telegram?.WebApp;
-    const telegramUserId =
-      (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
+    try {
+      setLoading(true);
+      const tg = (window as any)?.Telegram?.WebApp;
+      const telegramUserId =
+        (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
 
-    // Загружаем урок
-    const { data: lessonData } = await supabase
-      .from('lessons')
-      .select('*')
-      .eq('id', id)
-      .single();
+      // Загружаем урок
+      const { data: lessonData, error: lessonError } = await supabase
+        .from('lessons')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-    if (lessonData) {
-      setLesson(lessonData);
-
-      // Проверяем доступность урока
-      if (telegramUserId) {
-        const { data: unlockData } = await supabase.rpc('is_lesson_unlocked', {
-          p_telegram_user_id: Number(telegramUserId),
-          p_lesson_id: Number(id),
-        });
-
-        if (unlockData) {
-          setIsUnlocked(unlockData);
-        }
-
-        // Загружаем прогресс пользователя по этому уроку
-        const { data: progressData } = await supabase
-          .from('user_progress')
-          .select('*')
-          .eq('telegram_user_id', Number(telegramUserId))
-          .eq('lesson_id', Number(id))
-          .maybeSingle();
-
-        setProgress(progressData || null);
-        // Устанавливаем редактируемый ответ, если есть неодобренный ответ
-        if (progressData && progressData.status !== 'completed') {
-          setEditableAnswer(progressData.user_answer || '');
-        } else {
-          setEditableAnswer('');
-        }
-      } else {
-        setIsUnlocked({ unlocked: false, message: 'Требуется авторизация' });
+      if (lessonError) {
+        console.error('Error loading lesson:', lessonError);
+        setLoading(false);
+        return;
       }
+
+      if (lessonData) {
+        setLesson(lessonData);
+
+        // Проверяем доступность урока
+        if (telegramUserId) {
+          try {
+            const { data: unlockData, error: unlockError } = await supabase.rpc('is_lesson_unlocked', {
+              p_telegram_user_id: Number(telegramUserId),
+              p_lesson_id: Number(id),
+            });
+
+            if (unlockError) {
+              console.error('Error checking unlock status:', unlockError);
+            } else if (unlockData) {
+              setIsUnlocked(unlockData);
+            }
+
+            // Загружаем прогресс пользователя по этому уроку
+            const { data: progressData, error: progressError } = await supabase
+              .from('user_progress')
+              .select('*')
+              .eq('telegram_user_id', Number(telegramUserId))
+              .eq('lesson_id', Number(id))
+              .maybeSingle();
+
+            if (progressError) {
+              console.error('Error loading progress:', progressError);
+            }
+
+            setProgress(progressData || null);
+            // Устанавливаем редактируемый ответ, если есть неодобренный ответ
+            if (progressData && progressData.status !== 'completed') {
+              setEditableAnswer(progressData.user_answer || '');
+            } else {
+              setEditableAnswer('');
+            }
+          } catch (error) {
+            console.error('Error in user-specific data loading:', error);
+          }
+        } else {
+          setIsUnlocked({ unlocked: false, message: 'Требуется авторизация' });
+        }
+      }
+
+      // Загружаем занятия
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from('lesson_sessions')
+        .select('*')
+        .eq('lesson_id', id)
+        .order('order_index');
+
+      if (sessionsError) {
+        console.error('Error loading sessions:', sessionsError);
+      } else {
+        setSessions(sessionsData || []);
+      }
+    } catch (error) {
+      console.error('Unexpected error in loadLessonData:', error);
+    } finally {
+      setLoading(false);
     }
-
-    // Загружаем занятия
-    const { data: sessionsData, error: sessionsError } = await supabase
-      .from('lesson_sessions')
-      .select('*')
-      .eq('lesson_id', id)
-      .order('order_index');
-
-    if (!sessionsError) setSessions(sessionsData || []);
-    setLoading(false);
   };
 
   const handleCompleteClick = () => {
@@ -167,8 +194,6 @@ export default function LessonPage() {
   const canComplete = isUnlocked?.unlocked && lesson.question;
   const isAnswerApproved = progress?.status === 'completed';
   const hasAnswer = progress?.user_answer;
-  const [editableAnswer, setEditableAnswer] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   return (
     <main className="container">
