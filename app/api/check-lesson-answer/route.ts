@@ -83,13 +83,21 @@ export async function POST(request: NextRequest) {
     // Сохраняем ответ в user_progress всегда (для возможности редактирования)
     // Но статус 'completed' устанавливаем только если ответ одобрен
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:87',message:'Checking existing progress',data:{telegramUserId:Number(telegramUserId),lesson_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
     // Сначала проверяем существующую запись
-    const { data: existingProgress } = await supabase
+    const { data: existingProgress, error: checkError } = await supabase
       .from('user_progress')
       .select('status, completed_at')
       .eq('telegram_user_id', Number(telegramUserId))
       .eq('lesson_id', lesson_id)
       .maybeSingle();
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:95',message:'Existing progress check result',data:{existingProgress,checkError:checkError?.message,hasProgress:!!existingProgress},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
 
     // Определяем статус для сохранения
     let statusToSave: string;
@@ -100,6 +108,10 @@ export async function POST(request: NextRequest) {
       // Если ответ не одобрен - сохраняем существующий статус или 'skipped' если записи нет
       statusToSave = existingProgress?.status || 'skipped';
     }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:100',message:'Status determination',data:{approved,existingStatus:existingProgress?.status,statusToSave},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
 
     // Подготавливаем данные для сохранения
     const progressData: any = {
@@ -118,6 +130,10 @@ export async function POST(request: NextRequest) {
       progressData.completed_at = existingProgress.completed_at;
     }
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:120',message:'Progress data prepared',data:{progressDataKeys:Object.keys(progressData),hasCompletedAt:!!progressData.completed_at,status:progressData.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+
     console.log('Saving progress:', {
       approved,
       existingStatus: existingProgress?.status,
@@ -127,25 +143,74 @@ export async function POST(request: NextRequest) {
     });
 
     // Используем более явный подход: сначала пытаемся обновить, если не получилось - создаём
+    // Важно: не передаем updated_at - триггер должен его установить автоматически
     let progressError: any = null;
+    let operationType = '';
     
-    if (existingProgress) {
-      // Запись существует - обновляем
-      const { error: updateError } = await supabase
-        .from('user_progress')
-        .update(progressData)
-        .eq('telegram_user_id', Number(telegramUserId))
-        .eq('lesson_id', lesson_id);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:145',message:'Before DB operation',data:{hasExistingProgress:!!existingProgress,willUpdate:!!existingProgress,willInsert:!existingProgress,progressDataKeys:Object.keys(progressData)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    
+    // Используем RPC функцию для безопасного обновления прогресса
+    // Это решает проблему с триггером updated_at
+    operationType = 'RPC';
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:154',message:'Executing RPC update_user_progress',data:{telegramUserId:Number(telegramUserId),lesson_id,status:statusToSave,hasCompletedAt:!!progressData.completed_at},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    
+    const { error: rpcError } = await supabase.rpc('update_user_progress', {
+      p_telegram_user_id: Number(telegramUserId),
+      p_lesson_id: lesson_id,
+      p_status: statusToSave,
+      p_user_answer: user_answer,
+      p_photo_url: photo_url || null,
+      p_completed_at: progressData.completed_at || null,
+    });
+    
+    // Если RPC функция не существует или произошла ошибка, используем fallback
+    if (rpcError) {
+      // Проверяем, является ли ошибка отсутствием функции
+      const isFunctionNotFound = rpcError.message?.includes('function') || rpcError.code === '42883';
       
-      progressError = updateError;
-    } else {
-      // Записи нет - создаём новую
-      const { error: insertError } = await supabase
-        .from('user_progress')
-        .insert(progressData);
-      
-      progressError = insertError;
+      if (isFunctionNotFound) {
+        // RPC функция не существует - используем прямой подход с явным updated_at
+        operationType = existingProgress ? 'UPDATE_FALLBACK' : 'INSERT_FALLBACK';
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:170',message:'RPC function not found, using fallback',data:{willUpdate:!!existingProgress},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+        // #endregion
+        
+        // Добавляем updated_at явно для избежания проблем с триггером
+        const fallbackData = {
+          ...progressData,
+          updated_at: new Date().toISOString(),
+        };
+        
+        if (existingProgress) {
+          const { error: updateError } = await supabase
+            .from('user_progress')
+            .update(fallbackData)
+            .eq('telegram_user_id', Number(telegramUserId))
+            .eq('lesson_id', lesson_id);
+          
+          progressError = updateError;
+        } else {
+          const { error: insertError } = await supabase
+            .from('user_progress')
+            .insert(fallbackData);
+          
+          progressError = insertError;
+        }
+      } else {
+        // Другая ошибка RPC функции
+        progressError = rpcError;
+      }
     }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:152',message:'After DB operation',data:{operationType,hasError:!!progressError,errorMessage:progressError?.message,errorCode:progressError?.code,errorDetails:progressError?.details},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
 
     if (progressError) {
       console.error('Error saving progress:', progressError);
