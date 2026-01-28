@@ -82,28 +82,82 @@ export async function POST(request: NextRequest) {
 
     // Сохраняем ответ в user_progress всегда (для возможности редактирования)
     // Но статус 'completed' устанавливаем только если ответ одобрен
-    const { error: progressError } = await supabase
-      .from('user_progress')
-      .upsert(
-        {
-          telegram_user_id: Number(telegramUserId),
-          lesson_id: lesson_id,
-          status: approved ? 'completed' : null,
-          completed_at: approved ? new Date().toISOString() : null,
-          user_answer: user_answer,
-          photo_url: photo_url || null,
-        },
-        {
-          onConflict: 'telegram_user_id,lesson_id',
-        }
-      );
+    // Если ответ не одобрен, обновляем только user_answer и photo_url, не трогая status
+    if (approved) {
+      // Если ответ одобрен - обновляем всё, включая статус
+      const { error: progressError } = await supabase
+        .from('user_progress')
+        .upsert(
+          {
+            telegram_user_id: Number(telegramUserId),
+            lesson_id: lesson_id,
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            user_answer: user_answer,
+            photo_url: photo_url || null,
+          },
+          {
+            onConflict: 'telegram_user_id,lesson_id',
+          }
+        );
 
-    if (progressError) {
-      console.error('Error saving progress:', progressError);
-      return NextResponse.json(
-        { error: 'Не удалось сохранить прогресс' },
-        { status: 500 }
-      );
+      if (progressError) {
+        console.error('Error saving progress:', progressError);
+        return NextResponse.json(
+          { error: 'Не удалось сохранить прогресс' },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Если ответ не одобрен - обновляем только user_answer и photo_url
+      // Проверяем, существует ли уже запись
+      const { data: existingProgress } = await supabase
+        .from('user_progress')
+        .select('telegram_user_id, lesson_id')
+        .eq('telegram_user_id', Number(telegramUserId))
+        .eq('lesson_id', lesson_id)
+        .maybeSingle();
+
+      if (existingProgress) {
+        // Обновляем существующую запись, не трогая status и completed_at
+        const { error: progressError } = await supabase
+          .from('user_progress')
+          .update({
+            user_answer: user_answer,
+            photo_url: photo_url || null,
+          })
+          .eq('telegram_user_id', Number(telegramUserId))
+          .eq('lesson_id', lesson_id);
+
+        if (progressError) {
+          console.error('Error updating progress:', progressError);
+          return NextResponse.json(
+            { error: 'Не удалось сохранить прогресс' },
+            { status: 500 }
+          );
+        }
+      } else {
+        // Если записи нет, создаём новую с временным статусом 'skipped' (позже можно будет изменить схему)
+        // Или просто не создаём запись, если ответ не одобрен
+        // Но для возможности редактирования лучше создать запись
+        const { error: progressError } = await supabase
+          .from('user_progress')
+          .insert({
+            telegram_user_id: Number(telegramUserId),
+            lesson_id: lesson_id,
+            status: 'skipped', // Временное значение, так как null не разрешён
+            user_answer: user_answer,
+            photo_url: photo_url || null,
+          });
+
+        if (progressError) {
+          console.error('Error creating progress:', progressError);
+          return NextResponse.json(
+            { error: 'Не удалось сохранить прогресс' },
+            { status: 500 }
+          );
+        }
+      }
     }
 
     return NextResponse.json({
