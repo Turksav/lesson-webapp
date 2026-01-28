@@ -16,6 +16,7 @@ export default function CourseLessonsPage() {
   const [currency, setCurrency] = useState<string>('RUB');
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [activeCourseId, setActiveCourseId] = useState<number | null>(null);
   const [lessonsProgress, setLessonsProgress] = useState<Map<number, any>>(new Map());
 
   useEffect(() => {
@@ -96,6 +97,20 @@ export default function CourseLessonsPage() {
         .single();
 
       if (settingsData) setCurrency(settingsData.currency || 'RUB');
+
+      // Загружаем активный курс (если есть)
+      const { data: activeCourseData } = await supabase
+        .from('user_course_enrollments')
+        .select('course_id')
+        .eq('telegram_user_id', Number(telegramUserId))
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (activeCourseData) {
+        setActiveCourseId(activeCourseData.course_id);
+      } else {
+        setActiveCourseId(null);
+      }
     }
 
     setLoading(false);
@@ -192,6 +207,7 @@ export default function CourseLessonsPage() {
           // Устанавливаем enrollment и обновляем данные
           if (newEnrollmentData) {
             setEnrollment(newEnrollmentData);
+            setActiveCourseId(Number(id));
             setBalance(currentBalance - coursePrice);
             // Обновляем остальные данные
             await loadData();
@@ -240,7 +256,8 @@ export default function CourseLessonsPage() {
     );
   }
 
-  const canStartCourse = !enrollment && course && balance >= (course.price || 0);
+  const hasActiveOtherCourse = activeCourseId !== null && activeCourseId !== Number(id);
+  const canStartCourse = !enrollment && course && balance >= (course.price || 0) && !hasActiveOtherCourse;
   const hasInsufficientBalance = course && balance < (course.price || 0);
 
   return (
@@ -265,18 +282,22 @@ export default function CourseLessonsPage() {
                 Недостаточно средств на балансе. Требуется: {formatCurrency(course.price, currency)}, доступно: {formatCurrency(balance, currency)}
               </div>
             )}
-            <button
-              className="btn btn-primary"
-              onClick={handleStartCourse}
-              disabled={starting || !canStartCourse}
-              style={{ marginBottom: '24px' }}
-            >
-              {starting ? 'Начинаем курс...' : 'Начать курс'}
-            </button>
+            {!hasActiveOtherCourse && (
+              <button
+                className="btn btn-primary"
+                onClick={handleStartCourse}
+                disabled={starting || !canStartCourse}
+                style={{ marginBottom: '24px' }}
+              >
+                {starting ? 'Начинаем курс...' : 'Начать курс'}
+              </button>
+            )}
             {lessons.length > 0 && (
               <div style={{ marginTop: '24px', padding: '12px', background: '#f3f4f6', borderRadius: '8px' }}>
                 <p style={{ margin: 0, color: '#6b7280' }}>
-                  После начала курса вы сможете просмотреть уроки
+                  {hasActiveOtherCourse 
+                    ? 'Завершите текущий активный курс, чтобы начать новый.'
+                    : 'После начала курса вы сможете просмотреть уроки'}
                 </p>
               </div>
             )}
