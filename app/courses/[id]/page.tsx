@@ -16,6 +16,7 @@ export default function CourseLessonsPage() {
   const [currency, setCurrency] = useState<string>('RUB');
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [lessonsProgress, setLessonsProgress] = useState<Map<number, any>>(new Map());
 
   useEffect(() => {
     if (!id) return;
@@ -60,6 +61,23 @@ export default function CourseLessonsPage() {
         setEnrollment(enrollmentData);
       } else {
         setEnrollment(null);
+      }
+
+      // Загружаем прогресс по урокам курса
+      if (lessonsData && lessonsData.length > 0) {
+        const lessonIds = lessonsData.map(l => l.id);
+        const { data: progressData } = await supabase
+          .from('user_progress')
+          .select('*')
+          .eq('telegram_user_id', Number(telegramUserId))
+          .in('lesson_id', lessonIds);
+
+        if (progressData) {
+          const progressMap = new Map(
+            progressData.map((p: any) => [p.lesson_id, p])
+          );
+          setLessonsProgress(progressMap);
+        }
       }
 
       // Загружаем баланс и валюту
@@ -272,11 +290,18 @@ export default function CourseLessonsPage() {
                 {lessons.map((l, index) => {
                   // Первый урок всегда доступен, остальные проверяем через API
                   const isFirstLesson = index === 0;
+                  const lessonProgress = lessonsProgress.get(l.id);
+                  const isCompleted = lessonProgress?.status === 'completed';
                   return (
                     <div key={l.id} className="lesson-card" style={{ position: 'relative' }}>
-                      {!isFirstLesson && (
+                      {!isFirstLesson && !isCompleted && (
                         <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '4px 8px', background: '#f3f4f6', borderRadius: '4px', fontSize: '12px', color: '#6b7280' }}>
                           🔒
+                        </div>
+                      )}
+                      {isCompleted && (
+                        <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '4px 8px', background: '#dcfce7', borderRadius: '4px', fontSize: '16px', color: '#16a34a' }}>
+                          ✓
                         </div>
                       )}
                       <Link href={`/lesson/${l.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>

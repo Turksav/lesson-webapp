@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface LessonCompletionModalProps {
   isOpen: boolean;
@@ -11,6 +11,8 @@ interface LessonCompletionModalProps {
     allow_photo_upload: boolean;
   };
   onSuccess: () => void;
+  initialAnswer?: string;
+  initialPhotoUrl?: string | null;
 }
 
 export default function LessonCompletionModal({
@@ -18,12 +20,22 @@ export default function LessonCompletionModal({
   onClose,
   lesson,
   onSuccess,
+  initialAnswer,
+  initialPhotoUrl,
 }: LessonCompletionModalProps) {
-  const [answer, setAnswer] = useState('');
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [answer, setAnswer] = useState(initialAnswer || '');
+  const [photoUrl, setPhotoUrl] = useState<string | null>(initialPhotoUrl || null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Обновляем состояние при изменении initialAnswer/initialPhotoUrl
+  useEffect(() => {
+    if (isOpen) {
+      setAnswer(initialAnswer || '');
+      setPhotoUrl(initialPhotoUrl || null);
+    }
+  }, [isOpen, initialAnswer, initialPhotoUrl]);
 
   if (!isOpen) return null;
 
@@ -152,7 +164,10 @@ export default function LessonCompletionModal({
         onSuccess();
         onClose();
       } else {
+        // Если ответ не принят, не закрываем модальное окно, чтобы пользователь мог редактировать
         alert(data.message || 'Ответ не подходит. Посмотрите видео ещё раз и попробуйте ответить снова.');
+        // Обновляем данные, чтобы показать текущий ответ на странице урока
+        onSuccess();
       }
     } catch (error: any) {
       console.error('Error submitting answer:', error);

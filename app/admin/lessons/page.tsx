@@ -386,6 +386,18 @@ export default function AdminLessonsPage() {
             )}
           </div>
           <div className="form-group">
+
+          <div className="form-group">
+            <label>Описание урока</label>
+            <textarea
+              value={formData.lesson_description}
+              onChange={(e) => setFormData({ ...formData, lesson_description: e.target.value })}
+              className="form-textarea"
+              rows={3}
+              placeholder="Описание урока, показываемое клиенту ниже видео"
+            />
+          </div>
+
             <label>Описание видео (для AI)</label>
             <textarea
               value={formData.video_description}
@@ -398,16 +410,7 @@ export default function AdminLessonsPage() {
               Используется для контекста при проверке ответов через AI
             </small>
           </div>
-          <div className="form-group">
-            <label>Описание урока</label>
-            <textarea
-              value={formData.lesson_description}
-              onChange={(e) => setFormData({ ...formData, lesson_description: e.target.value })}
-              className="form-textarea"
-              rows={3}
-              placeholder="Описание урока, показываемое клиенту ниже видео"
-            />
-          </div>
+          
           <div className="form-group">
             <label>Вопрос к уроку</label>
             <textarea

@@ -80,31 +80,30 @@ export async function POST(request: NextRequest) {
     const approved = n8nData.approved === true;
     const message = n8nData.message || (approved ? 'Ответ принят' : 'Ответ не подходит');
 
-    if (approved) {
-      // Сохраняем ответ в user_progress
-      const { error: progressError } = await supabase
-        .from('user_progress')
-        .upsert(
-          {
-            telegram_user_id: Number(telegramUserId),
-            lesson_id: lesson_id,
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            user_answer: user_answer,
-            photo_url: photo_url || null,
-          },
-          {
-            onConflict: 'telegram_user_id,lesson_id',
-          }
-        );
+    // Сохраняем ответ в user_progress всегда (для возможности редактирования)
+    // Но статус 'completed' устанавливаем только если ответ одобрен
+    const { error: progressError } = await supabase
+      .from('user_progress')
+      .upsert(
+        {
+          telegram_user_id: Number(telegramUserId),
+          lesson_id: lesson_id,
+          status: approved ? 'completed' : null,
+          completed_at: approved ? new Date().toISOString() : null,
+          user_answer: user_answer,
+          photo_url: photo_url || null,
+        },
+        {
+          onConflict: 'telegram_user_id,lesson_id',
+        }
+      );
 
-      if (progressError) {
-        console.error('Error saving progress:', progressError);
-        return NextResponse.json(
-          { error: 'Не удалось сохранить прогресс' },
-          { status: 500 }
-        );
-      }
+    if (progressError) {
+      console.error('Error saving progress:', progressError);
+      return NextResponse.json(
+        { error: 'Не удалось сохранить прогресс' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

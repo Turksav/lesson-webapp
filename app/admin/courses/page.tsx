@@ -179,30 +179,15 @@ export default function AdminCoursesPage() {
     }
 
     try {
-      if (editingId) {
-        const { error } = await supabase
-          .from('courses')
-          .update({
-            title: formData.title,
-            description: formData.description || null,
-            image_url: formData.image_url || null,
-            price: formData.price || 0,
-          })
-          .eq('id', editingId);
+      const { error } = await supabase.rpc('create_or_update_course', {
+        p_id: editingId || null,
+        p_title: formData.title,
+        p_description: formData.description || null,
+        p_image_url: formData.image_url || null,
+        p_price: formData.price || 0,
+      });
 
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('courses')
-          .insert({
-            title: formData.title,
-            description: formData.description || null,
-            image_url: formData.image_url || null,
-            price: formData.price || 0,
-          });
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       handleCancel();
       loadCourses();
@@ -215,7 +200,9 @@ export default function AdminCoursesPage() {
     if (!confirm('Удалить курс?')) return;
 
     try {
-      const { error } = await supabase.from('courses').delete().eq('id', id);
+      const { error } = await supabase.rpc('delete_course', {
+        p_id: id,
+      });
       if (error) throw error;
       loadCourses();
     } catch (error: any) {

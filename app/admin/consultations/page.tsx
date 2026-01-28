@@ -234,7 +234,6 @@ export default function AdminConsultationsPage() {
   const totalPages = Math.ceil(filteredConsultations.length / itemsPerPage);
 
   const isConsultationPast = (consultation: Consultation): boolean => {
-    if (consultation.status !== 'confirmed') return false;
     const consultationDateTime = new Date(
       `${consultation.consultation_date}T${consultation.consultation_time}`
     );
@@ -696,8 +695,10 @@ export default function AdminConsultationsPage() {
                 ? `https://t.me/${telegramUsername.replace('@', '')}`
                 : null;
               
+              const isPast = isConsultationPast(consultation);
+              
               return (
-                <tr key={consultation.id}>
+                <tr key={consultation.id} style={isPast ? { color: '#6b7280' } : {}}>
                   <td>{consultation.telegram_user_id}</td>
                   <td>{userName}</td>
                   <td>{new Date(consultation.consultation_date).toLocaleDateString('ru-RU')}</td>
@@ -726,7 +727,7 @@ export default function AdminConsultationsPage() {
                     )}
                   </td>
                   <td>
-                    {consultation.status !== 'cancelled' && !isConsultationPast(consultation) && (
+                    {consultation.status !== 'cancelled' && !isPast && (
                       <button
                         className="btn btn-sm btn-ghost"
                         onClick={() => handleCancelConsultation(consultation.id)}
