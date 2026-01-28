@@ -93,13 +93,7 @@ CREATE TRIGGER update_user_course_enrollments_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 -- 5) Обновляем RPC функцию create_or_update_lesson
-DROP FUNCTION IF EXISTS public.create_or_update_lesson(
-  p_id bigint,
-  p_title text,
-  p_course_id bigint,
-  p_order_index int,
-  p_kinescope_video_id text
-);
+DROP FUNCTION public.create_or_update_lesson;
 
 CREATE FUNCTION public.create_or_update_lesson(
   p_id bigint default null,
@@ -274,36 +268,28 @@ GRANT EXECUTE ON FUNCTION public.start_course TO anon;
 -- 7) RLS политики для user_progress
 ALTER TABLE public.user_progress ENABLE ROW LEVEL SECURITY;
 
+-- ВАЖНО: в текущей архитектуре Telegram mini-app не передаёт JWT claims,
+-- поэтому строгие политики через request.jwt.claims будут скрывать строки и давать 406 на .single().
+-- Делаем политики как в остальных таблицах проекта (using true), а фильтрацию выполняем на уровне приложения.
+
 DROP POLICY IF EXISTS "Пользователи могут читать свой прогресс" ON public.user_progress;
 CREATE POLICY "Пользователи могут читать свой прогресс"
   ON public.user_progress
   FOR SELECT
-  USING (
-    telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::bigint
-    OR telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::text::bigint
-  );
+  USING (true);
 
 DROP POLICY IF EXISTS "Пользователи могут создавать свой прогресс" ON public.user_progress;
 CREATE POLICY "Пользователи могут создавать свой прогресс"
   ON public.user_progress
   FOR INSERT
-  WITH CHECK (
-    telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::bigint
-    OR telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::text::bigint
-  );
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Пользователи могут обновлять свой прогресс" ON public.user_progress;
 CREATE POLICY "Пользователи могут обновлять свой прогресс"
   ON public.user_progress
   FOR UPDATE
-  USING (
-    telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::bigint
-    OR telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::text::bigint
-  )
-  WITH CHECK (
-    telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::bigint
-    OR telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::text::bigint
-  );
+  USING (true)
+  WITH CHECK (true);
 
 -- 8) RLS политики для user_course_enrollments
 ALTER TABLE public.user_course_enrollments ENABLE ROW LEVEL SECURITY;
@@ -312,32 +298,20 @@ DROP POLICY IF EXISTS "Пользователи могут читать свои
 CREATE POLICY "Пользователи могут читать свои записи на курсы"
   ON public.user_course_enrollments
   FOR SELECT
-  USING (
-    telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::bigint
-    OR telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::text::bigint
-  );
+  USING (true);
 
 DROP POLICY IF EXISTS "Пользователи могут создавать записи на курсы" ON public.user_course_enrollments;
 CREATE POLICY "Пользователи могут создавать записи на курсы"
   ON public.user_course_enrollments
   FOR INSERT
-  WITH CHECK (
-    telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::bigint
-    OR telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::text::bigint
-  );
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Пользователи могут обновлять свои записи на курсы" ON public.user_course_enrollments;
 CREATE POLICY "Пользователи могут обновлять свои записи на курсы"
   ON public.user_course_enrollments
   FOR UPDATE
-  USING (
-    telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::bigint
-    OR telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::text::bigint
-  )
-  WITH CHECK (
-    telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::bigint
-    OR telegram_user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::text::bigint
-  );
+  USING (true)
+  WITH CHECK (true);
 
 -- 9) Функция для проверки доступности урока
 CREATE OR REPLACE FUNCTION public.is_lesson_unlocked(

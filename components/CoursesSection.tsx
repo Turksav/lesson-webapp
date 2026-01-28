@@ -93,10 +93,19 @@ export default function CoursesSection() {
       .select('course_id, courses(title)')
       .eq('telegram_user_id', Number(telegramUserId))
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
-    if (!error && data) {
+    // Если строки нет — maybeSingle вернёт data=null; это нормальный кейс.
+    if (error) {
+      console.warn('loadActiveCourse error:', error);
+      setActiveCourse(null);
+      return;
+    }
+
+    if (data) {
       setActiveCourse(data);
+    } else {
+      setActiveCourse(null);
     }
   };
 
