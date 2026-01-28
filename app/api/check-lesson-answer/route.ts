@@ -82,20 +82,14 @@ export async function POST(request: NextRequest) {
 
     // Сохраняем ответ в user_progress всегда (для возможности редактирования)
     // Но статус 'completed' устанавливаем только если ответ одобрен
-    // Если ответ не одобрен, сохраняем ответ, но не меняем статус на 'completed'
     
     // Сначала проверяем существующую запись
-    const { data: existingProgress, error: checkError } = await supabase
+    const { data: existingProgress } = await supabase
       .from('user_progress')
       .select('status, completed_at')
       .eq('telegram_user_id', Number(telegramUserId))
       .eq('lesson_id', lesson_id)
       .maybeSingle();
-
-    if (checkError) {
-      console.error('Error checking existing progress:', checkError);
-      // Не прерываем выполнение, продолжаем с upsert
-    }
 
     // Определяем статус для сохранения
     let statusToSave: string;
@@ -107,7 +101,7 @@ export async function POST(request: NextRequest) {
       statusToSave = existingProgress?.status || 'skipped';
     }
 
-    // Подготавливаем данные для upsert
+    // Подготавливаем данные для сохранения
     const progressData: any = {
       telegram_user_id: Number(telegramUserId),
       lesson_id: lesson_id,
@@ -119,27 +113,39 @@ export async function POST(request: NextRequest) {
     // completed_at устанавливаем только если ответ одобрен
     if (approved) {
       progressData.completed_at = new Date().toISOString();
-    } else if (existingProgress && existingProgress.completed_at) {
+    } else if (existingProgress?.completed_at) {
       // Если ответ не одобрен, но запись уже существует с completed_at - сохраняем его
-      // Это важно для случаев, когда пользователь повторно отправляет неодобренный ответ
-      // после того, как ответ был ранее одобрен
       progressData.completed_at = existingProgress.completed_at;
     }
-    // Если ответ не одобрен и записи нет - не устанавливаем completed_at (будет null)
 
     console.log('Saving progress:', {
       approved,
       existingStatus: existingProgress?.status,
       statusToSave,
       hasExistingProgress: !!existingProgress,
+      progressDataKeys: Object.keys(progressData),
     });
 
-    // Используем upsert для создания или обновления записи
-    const { error: progressError } = await supabase
-      .from('user_progress')
-      .upsert(progressData, {
-        onConflict: 'telegram_user_id,lesson_id',
-      });
+    // Используем более явный подход: сначала пытаемся обновить, если не получилось - создаём
+    let progressError: any = null;
+    
+    if (existingProgress) {
+      // Запись существует - обновляем
+      const { error: updateError } = await supabase
+        .from('user_progress')
+        .update(progressData)
+        .eq('telegram_user_id', Number(telegramUserId))
+        .eq('lesson_id', lesson_id);
+      
+      progressError = updateError;
+    } else {
+      // Записи нет - создаём новую
+      const { error: insertError } = await supabase
+        .from('user_progress')
+        .insert(progressData);
+      
+      progressError = insertError;
+    }
 
     if (progressError) {
       console.error('Error saving progress:', progressError);
@@ -150,10 +156,14 @@ export async function POST(request: NextRequest) {
         code: progressError.code,
       });
       console.error('Progress data:', JSON.stringify(progressData, null, 2));
+      console.error('Existing progress:', existingProgress);
+      
+      // Возвращаем более детальную информацию для отладки (в продакшене можно убрать)
       return NextResponse.json(
         { 
           error: 'Не удалось сохранить прогресс',
-          details: progressError.message || JSON.stringify(progressError)
+          details: progressError.message || 'Unknown error',
+          code: progressError.code || 'UNKNOWN'
         },
         { status: 500 }
       );
