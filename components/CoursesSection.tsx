@@ -4,16 +4,19 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import ConsultationBookingModal from './ConsultationBookingModal';
+import { formatCurrency } from '@/lib/currencyUtils';
 
 export default function CoursesSection() {
   const [courses, setCourses] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [balance, setBalance] = useState<number>(0);
   const [currency, setCurrency] = useState<string>('RUB');
+  const [activeCourse, setActiveCourse] = useState<any>(null);
 
   useEffect(() => {
     loadCourses();
     loadUserData();
+    loadActiveCourse();
   }, []);
 
   const loadCourses = async () => {
@@ -76,6 +79,27 @@ export default function CoursesSection() {
     loadUserData();
   };
 
+  const loadActiveCourse = async () => {
+    const tg = (window as any)?.Telegram?.WebApp;
+    const telegramUserId =
+      (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
+
+    if (!telegramUserId) {
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('user_course_enrollments')
+      .select('course_id, courses(title)')
+      .eq('telegram_user_id', Number(telegramUserId))
+      .eq('status', 'active')
+      .single();
+
+    if (!error && data) {
+      setActiveCourse(data);
+    }
+  };
+
   if (courses.length === 0) {
     return (
       <>
@@ -107,9 +131,20 @@ export default function CoursesSection() {
               {course.description && (
                 <p className="course-description">{course.description}</p>
               )}
-              <Link href={`/courses/${course.id}`} className="btn btn-primary">
-                Подробнее
-              </Link>
+              {course.price !== undefined && course.price !== null && (
+                <p className="course-price" style={{ marginTop: '8px', fontWeight: '600', color: '#6366f1' }}>
+                  {formatCurrency(course.price, currency)}
+                </p>
+              )}
+              {activeCourse && activeCourse.course_id !== course.id ? (
+                <div style={{ marginTop: '12px', padding: '12px', background: '#fef2f2', borderRadius: '8px', color: '#dc2626' }}>
+                  Вы уже проходите курс "{activeCourse.courses?.title}". Завершите его, чтобы начать новый.
+                </div>
+              ) : (
+                <Link href={`/courses/${course.id}`} className="btn btn-primary" style={{ marginTop: '12px' }}>
+                  Подробнее
+                </Link>
+              )}
             </div>
           </div>
         ))}

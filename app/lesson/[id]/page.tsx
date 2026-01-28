@@ -5,73 +5,86 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import VideoPlayer from '@/components/VideoPlayer';
+import LessonCompletionModal from '@/components/LessonCompletionModal';
 
 export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
   const [lesson, setLesson] = useState<any>(null);
   const [sessions, setSessions] = useState<any[]>([]);
+  const [isUnlocked, setIsUnlocked] = useState<{ unlocked: boolean; message: string } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
-
-    supabase
-      .from('lessons')
-      .select('*')
-      .eq('id', id)
-      .single()
-      .then(({ data }) => setLesson(data));
-
-    supabase
-      .from('lesson_sessions')
-      .select('*')
-      .eq('lesson_id', id)
-      .order('order_index')
-      .then(({ data, error }) => {
-        if (!error) setSessions(data || []);
-      });
+    loadLessonData();
   }, [id]);
 
-  const markCompleted = async () => {
+  const loadLessonData = async () => {
+    setLoading(true);
     const tg = (window as any)?.Telegram?.WebApp;
     const telegramUserId =
       (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
 
-    // Без Telegram пользователя не пытаемся писать прогресс
+    // Загружаем урок
+    const { data: lessonData } = await supabase
+      .from('lessons')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (lessonData) {
+      setLesson(lessonData);
+
+      // Проверяем доступность урока
+      if (telegramUserId) {
+        const { data: unlockData } = await supabase.rpc('is_lesson_unlocked', {
+          p_telegram_user_id: Number(telegramUserId),
+          p_lesson_id: Number(id),
+        });
+
+        if (unlockData) {
+          setIsUnlocked(unlockData);
+        }
+      } else {
+        setIsUnlocked({ unlocked: false, message: 'Требуется авторизация' });
+      }
+    }
+
+    // Загружаем занятия
+    const { data: sessionsData, error: sessionsError } = await supabase
+      .from('lesson_sessions')
+      .select('*')
+      .eq('lesson_id', id)
+      .order('order_index');
+
+    if (!sessionsError) setSessions(sessionsData || []);
+    setLoading(false);
+  };
+
+  const handleCompleteClick = () => {
+    const tg = (window as any)?.Telegram?.WebApp;
+    const telegramUserId =
+      (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
+
     if (!telegramUserId) {
-      console.warn('Cannot mark lesson completed: no Telegram user context');
       alert('Завершение урока доступно только внутри Telegram WebApp.');
       return;
     }
 
-    const { error } = await supabase
-      .from('user_progress')
-      .upsert(
-        {
-          lesson_id: Number(id),
-          status: 'completed',
-          telegram_user_id: Number(telegramUserId),
-        },
-        {
-          onConflict: 'telegram_user_id,lesson_id',
-        }
-      );
-
-    if (error) {
-      console.error('Supabase upsert error', {
-        message: (error as any).message,
-        details: (error as any).details,
-        hint: (error as any).hint,
-        code: (error as any).code,
-        raw: error,
-      });
-      alert('Не удалось сохранить прогресс. Попробуй ещё раз позже.');
+    if (!lesson?.question) {
+      alert('У этого урока нет вопроса для завершения.');
       return;
     }
 
-    alert('Урок отмечен как завершён ✅');
+    setIsModalOpen(true);
   };
 
-  if (!lesson) {
+  const handleModalSuccess = () => {
+    loadLessonData();
+  };
+
+  if (loading || !lesson) {
     return (
       <main className="container">
         <section className="surface">
@@ -80,6 +93,8 @@ export default function LessonPage() {
       </main>
     );
   }
+
+  const canComplete = isUnlocked?.unlocked && lesson.question;
 
   return (
     <main className="container">
@@ -90,17 +105,27 @@ export default function LessonPage() {
               ← Назад
             </Link>
             <h1 className="lesson-title">{lesson.title}</h1>
-            <p className="page-subtitle">Отметь урок завершённым, когда будешь готов.</p>
+            {!isUnlocked?.unlocked && (
+              <div style={{ marginTop: '12px', padding: '12px', background: '#fef2f2', borderRadius: '8px', color: '#dc2626' }}>
+                {isUnlocked?.message || 'Урок недоступен'}
+              </div>
+            )}
           </div>
         </header>
 
-        {lesson.kinescope_video_id && (
+        {lesson.kinescope_video_id && isUnlocked?.unlocked && (
           <div className="lesson-video-section">
             <VideoPlayer kinescopeVideoId={lesson.kinescope_video_id} title={lesson.title} />
           </div>
         )}
 
-        {sessions.length > 0 ? (
+        {lesson.lesson_description && isUnlocked?.unlocked && (
+          <div className="lesson-description" style={{ marginTop: '24px', padding: '16px', background: '#f9fafb', borderRadius: '8px' }}>
+            <p style={{ margin: 0, lineHeight: '1.6' }}>{lesson.lesson_description}</p>
+          </div>
+        )}
+
+        {isUnlocked?.unlocked && sessions.length > 0 ? (
           <div className="lesson-layout">
             {sessions.map((s) => (
               <div key={s.id} className="lesson-card">
@@ -110,19 +135,28 @@ export default function LessonPage() {
               </div>
             ))}
           </div>
-        ) : lesson.content ? (
+        ) : isUnlocked?.unlocked && lesson.content ? (
           <div className="lesson-body">
             {lesson.content}
           </div>
-        ) : (
+        ) : isUnlocked?.unlocked ? (
           <p className="page-subtitle">В этом уроке пока нет занятий.</p>
+        ) : null}
+
+        {canComplete && (
+          <div style={{ marginTop: '24px' }}>
+            <button className="btn btn-primary" onClick={handleCompleteClick}>
+              Завершить урок
+            </button>
+          </div>
         )}
 
-        <div>
-          <button className="btn btn-primary" onClick={markCompleted}>
-            Завершить урок
-          </button>
-        </div>
+        <LessonCompletionModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          lesson={lesson}
+          onSuccess={handleModalSuccess}
+        />
       </section>
     </main>
   );

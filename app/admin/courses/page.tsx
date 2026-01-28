@@ -9,6 +9,7 @@ interface Course {
   title: string;
   description: string | null;
   image_url: string | null;
+  price: number;
 }
 
 export default function AdminCoursesPage() {
@@ -23,6 +24,7 @@ export default function AdminCoursesPage() {
     title: '',
     description: '',
     image_url: '',
+    price: 0,
   });
   const itemsPerPage = 10;
 
@@ -108,6 +110,8 @@ export default function AdminCoursesPage() {
         value = item.title;
       } else if (key === 'description') {
         value = item.description || '-';
+      } else if (key === 'price') {
+        value = item.price?.toString() || '0';
       } else {
         value = String((item as any)[key] || '');
       }
@@ -159,12 +163,13 @@ export default function AdminCoursesPage() {
       title: course.title,
       description: course.description || '',
       image_url: course.image_url || '',
+      price: course.price || 0,
     });
   };
 
   const handleCancel = () => {
     setEditingId(null);
-    setFormData({ title: '', description: '', image_url: '' });
+    setFormData({ title: '', description: '', image_url: '', price: 0 });
   };
 
   const handleSave = async () => {
@@ -181,6 +186,7 @@ export default function AdminCoursesPage() {
             title: formData.title,
             description: formData.description || null,
             image_url: formData.image_url || null,
+            price: formData.price || 0,
           })
           .eq('id', editingId);
 
@@ -192,6 +198,7 @@ export default function AdminCoursesPage() {
             title: formData.title,
             description: formData.description || null,
             image_url: formData.image_url || null,
+            price: formData.price || 0,
           });
 
         if (error) throw error;
@@ -244,7 +251,7 @@ export default function AdminCoursesPage() {
             className="btn btn-primary"
             onClick={() => {
               setEditingId(null);
-              setFormData({ title: '', description: '', image_url: '' });
+              setFormData({ title: '', description: '', image_url: '', price: 0 });
             }}
           >
             + Создать курс
@@ -282,6 +289,20 @@ export default function AdminCoursesPage() {
               onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
               className="form-input"
             />
+          </div>
+          <div className="form-group">
+            <label>Стоимость</label>
+            <input
+              type="number"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) || 0 })}
+              className="form-input"
+              min="0"
+              step="0.01"
+            />
+            <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+              Стоимость курса. Может быть нулевой.
+            </small>
           </div>
           <div className="admin-form-actions">
             <button className="btn btn-ghost" onClick={handleCancel}>
@@ -424,6 +445,52 @@ export default function AdminCoursesPage() {
                   </div>
                 )}
               </th>
+              <th>
+                <div className="admin-table-header">
+                  <span>Стоимость</span>
+                  <button
+                    className="admin-filter-btn"
+                    onClick={() => setFilterMenus({ ...filterMenus, price: !filterMenus.price })}
+                  >
+                    🔽
+                  </button>
+                </div>
+                {filterMenus.price && (
+                  <div className="admin-filter-menu">
+                    <input
+                      type="text"
+                      placeholder="Поиск..."
+                      className="admin-filter-search"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value) {
+                          toggleFilter('price', e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                    <div className="admin-filter-options">
+                      {getUniqueValues('price').map((val) => (
+                        <label key={val} className="admin-filter-option">
+                          <input
+                            type="checkbox"
+                            checked={filters.price?.has(val) || false}
+                            onChange={() => toggleFilter('price', val)}
+                          />
+                          <span>{val}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {filters.price && filters.price.size > 0 && (
+                      <button
+                        className="admin-filter-clear"
+                        onClick={() => clearFilter('price')}
+                      >
+                        Очистить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
               <th>Действия</th>
             </tr>
           </thead>
@@ -433,6 +500,7 @@ export default function AdminCoursesPage() {
                 <td>{course.id}</td>
                 <td>{course.title}</td>
                 <td>{course.description || '-'}</td>
+                <td>{course.price || 0}</td>
                 <td>
                   <button
                     className="btn btn-sm btn-ghost"

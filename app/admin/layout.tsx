@@ -14,6 +14,10 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    courses: pathname?.startsWith('/admin/courses') || pathname?.startsWith('/admin/lessons'),
+    consultations: pathname?.startsWith('/admin/slots') || pathname?.startsWith('/admin/consultations'),
+  });
 
   useEffect(() => {
     // Пропускаем проверку для страницы входа
@@ -90,30 +94,58 @@ export default function AdminLayout({
           >
             Главная
           </Link>
-          <Link
-            href="/admin/courses"
-            className={`admin-nav-link ${pathname === '/admin/courses' ? 'active' : ''}`}
-          >
-            Курсы
-          </Link>
-          <Link
-            href="/admin/lessons"
-            className={`admin-nav-link ${pathname === '/admin/lessons' ? 'active' : ''}`}
-          >
-            Уроки
-          </Link>
-          <Link
-            href="/admin/slots"
-            className={`admin-nav-link ${pathname === '/admin/slots' ? 'active' : ''}`}
-          >
-            Слоты консультаций
-          </Link>
-          <Link
-            href="/admin/consultations"
-            className={`admin-nav-link ${pathname === '/admin/consultations' ? 'active' : ''}`}
-          >
-            Консультации
-          </Link>
+          
+          <div className="admin-nav-section">
+            <button
+              className={`admin-nav-section-toggle ${expandedSections.courses ? 'expanded' : ''}`}
+              onClick={() => setExpandedSections({ ...expandedSections, courses: !expandedSections.courses })}
+            >
+              <span>Курсы</span>
+              <span className="admin-nav-arrow">{expandedSections.courses ? '▼' : '▶'}</span>
+            </button>
+            {expandedSections.courses && (
+              <div className="admin-nav-submenu">
+                <Link
+                  href="/admin/courses"
+                  className={`admin-nav-link admin-nav-submenu-link ${pathname === '/admin/courses' ? 'active' : ''}`}
+                >
+                  Список курсов
+                </Link>
+                <Link
+                  href="/admin/lessons"
+                  className={`admin-nav-link admin-nav-submenu-link ${pathname === '/admin/lessons' ? 'active' : ''}`}
+                >
+                  Список уроков
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <div className="admin-nav-section">
+            <button
+              className={`admin-nav-section-toggle ${expandedSections.consultations ? 'expanded' : ''}`}
+              onClick={() => setExpandedSections({ ...expandedSections, consultations: !expandedSections.consultations })}
+            >
+              <span>Консультации</span>
+              <span className="admin-nav-arrow">{expandedSections.consultations ? '▼' : '▶'}</span>
+            </button>
+            {expandedSections.consultations && (
+              <div className="admin-nav-submenu">
+                <Link
+                  href="/admin/slots"
+                  className={`admin-nav-link admin-nav-submenu-link ${pathname === '/admin/slots' ? 'active' : ''}`}
+                >
+                  Слоты
+                </Link>
+                <Link
+                  href="/admin/consultations"
+                  className={`admin-nav-link admin-nav-submenu-link ${pathname === '/admin/consultations' ? 'active' : ''}`}
+                >
+                  Записи
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </nav>
       <main className="admin-content">

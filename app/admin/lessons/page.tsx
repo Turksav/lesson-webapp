@@ -9,6 +9,10 @@ interface Lesson {
   course_id: number | null;
   order_index: number;
   kinescope_video_id: string | null;
+  video_description: string | null;
+  lesson_description: string | null;
+  question: string | null;
+  allow_photo_upload: boolean;
 }
 
 interface Course {
@@ -31,6 +35,10 @@ export default function AdminLessonsPage() {
     course_id: '',
     order_index: 0,
     kinescope_video_id: '',
+    video_description: '',
+    lesson_description: '',
+    question: '',
+    allow_photo_upload: false,
   });
   const itemsPerPage = 10;
 
@@ -189,13 +197,26 @@ export default function AdminLessonsPage() {
       course_id: lesson.course_id?.toString() || '',
       order_index: lesson.order_index,
       kinescope_video_id: lesson.kinescope_video_id || '',
+      video_description: lesson.video_description || '',
+      lesson_description: lesson.lesson_description || '',
+      question: lesson.question || '',
+      allow_photo_upload: lesson.allow_photo_upload || false,
     });
   };
 
   const handleCancel = () => {
     setEditingId(null);
     setIsCreating(false);
-    setFormData({ title: '', course_id: '', order_index: 0, kinescope_video_id: '' });
+    setFormData({ 
+      title: '', 
+      course_id: '', 
+      order_index: 0, 
+      kinescope_video_id: '',
+      video_description: '',
+      lesson_description: '',
+      question: '',
+      allow_photo_upload: false,
+    });
   };
 
   const handleSave = async () => {
@@ -216,6 +237,10 @@ export default function AdminLessonsPage() {
         p_course_id: formData.course_id ? Number(formData.course_id) : null,
         p_order_index: formData.order_index,
         p_kinescope_video_id: formData.kinescope_video_id || null,
+        p_video_description: formData.video_description || null,
+        p_lesson_description: formData.lesson_description || null,
+        p_question: formData.question || null,
+        p_allow_photo_upload: formData.allow_photo_upload,
       });
 
       if (error) throw error;
@@ -276,7 +301,16 @@ export default function AdminLessonsPage() {
             onClick={() => {
               setEditingId(null);
               setIsCreating(true);
-              setFormData({ title: '', course_id: '', order_index: 0, kinescope_video_id: '' });
+              setFormData({ 
+                title: '', 
+                course_id: '', 
+                order_index: 0, 
+                kinescope_video_id: '',
+                video_description: '',
+                lesson_description: '',
+                question: '',
+                allow_photo_upload: false,
+              });
             }}
           >
             + Создать урок
@@ -350,6 +384,52 @@ export default function AdminLessonsPage() {
                 </a>
               </small>
             )}
+          </div>
+          <div className="form-group">
+            <label>Описание видео (для AI)</label>
+            <textarea
+              value={formData.video_description}
+              onChange={(e) => setFormData({ ...formData, video_description: e.target.value })}
+              className="form-textarea"
+              rows={3}
+              placeholder="Описание видео для обработки AI. Клиенту не показывается."
+            />
+            <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+              Используется для контекста при проверке ответов через AI
+            </small>
+          </div>
+          <div className="form-group">
+            <label>Описание урока</label>
+            <textarea
+              value={formData.lesson_description}
+              onChange={(e) => setFormData({ ...formData, lesson_description: e.target.value })}
+              className="form-textarea"
+              rows={3}
+              placeholder="Описание урока, показываемое клиенту ниже видео"
+            />
+          </div>
+          <div className="form-group">
+            <label>Вопрос к уроку</label>
+            <textarea
+              value={formData.question}
+              onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+              className="form-textarea"
+              rows={3}
+              placeholder="Вопрос, который будет показан клиенту при завершении урока"
+            />
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="checkbox"
+                checked={formData.allow_photo_upload}
+                onChange={(e) => setFormData({ ...formData, allow_photo_upload: e.target.checked })}
+              />
+              Разрешить загрузку фото результата задания
+            </label>
+            <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+              Если включено, клиент сможет загрузить фото вместе с ответом
+            </small>
           </div>
           <div className="admin-form-actions">
             <button className="btn btn-ghost" onClick={handleCancel}>
