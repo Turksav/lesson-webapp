@@ -237,11 +237,6 @@ export default function CourseLessonsPage() {
             {course?.description && (
               <p className="page-subtitle">{course.description}</p>
             )}
-            {course?.price !== undefined && course?.price !== null && (
-              <p className="page-subtitle" style={{ marginTop: '8px', fontWeight: '600', color: '#6366f1' }}>
-                Стоимость: {formatCurrency(course.price, currency)}
-              </p>
-            )}
           </div>
         </header>
 
