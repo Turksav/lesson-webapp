@@ -57,6 +57,12 @@ export default function LessonPage() {
           .maybeSingle();
 
         setProgress(progressData || null);
+        // Устанавливаем редактируемый ответ, если есть неодобренный ответ
+        if (progressData && progressData.status !== 'completed') {
+          setEditableAnswer(progressData.user_answer || '');
+        } else {
+          setEditableAnswer('');
+        }
       } else {
         setIsUnlocked({ unlocked: false, message: 'Требуется авторизация' });
       }
@@ -95,6 +101,59 @@ export default function LessonPage() {
     loadLessonData();
   };
 
+  const handleSubmitAnswer = async () => {
+    if (!editableAnswer.trim()) {
+      alert('Пожалуйста, введите ответ на вопрос');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const tg = (window as any)?.Telegram?.WebApp;
+    const telegramUserId =
+      (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
+
+    if (!telegramUserId) {
+      alert('Требуется авторизация Telegram');
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/check-lesson-answer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lesson_id: lesson.id,
+          user_answer: editableAnswer,
+          photo_url: progress?.photo_url || null,
+          telegram_user_id: Number(telegramUserId),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка при проверке ответа');
+      }
+
+      if (data.approved) {
+        alert('Ваш ответ принят. Завтра можете приступить к выполнению следующего урока.');
+        loadLessonData();
+      } else {
+        alert(data.message || 'Ответ не подходит. Посмотрите видео ещё раз и попробуйте ответить снова.');
+        loadLessonData();
+      }
+    } catch (error: any) {
+      console.error('Error submitting answer:', error);
+      alert('Ошибка: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (loading || !lesson) {
     return (
       <main className="container">
@@ -108,6 +167,8 @@ export default function LessonPage() {
   const canComplete = isUnlocked?.unlocked && lesson.question;
   const isAnswerApproved = progress?.status === 'completed';
   const hasAnswer = progress?.user_answer;
+  const [editableAnswer, setEditableAnswer] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   return (
     <main className="container">
@@ -190,9 +251,14 @@ export default function LessonPage() {
                   </>
                 ) : (
                   <>
-                    <div style={{ padding: '12px', background: 'white', borderRadius: '6px', lineHeight: '1.6', color: '#374151', marginBottom: '12px', border: '1px solid #fbbf24' }}>
-                      {progress.user_answer}
-                    </div>
+                    <textarea
+                      value={editableAnswer}
+                      onChange={(e) => setEditableAnswer(e.target.value)}
+                      className="form-textarea"
+                      rows={5}
+                      style={{ width: '100%', marginBottom: '12px' }}
+                      placeholder="Введите ваш ответ на вопрос..."
+                    />
                     {progress.photo_url && (
                       <div style={{ marginTop: '12px', marginBottom: '12px' }}>
                         <img 
@@ -207,11 +273,10 @@ export default function LessonPage() {
                     </div>
                     <button
                       className="btn btn-primary"
-                      onClick={() => {
-                        setIsModalOpen(true);
-                      }}
+                      onClick={handleSubmitAnswer}
+                      disabled={isSubmitting || !editableAnswer.trim()}
                     >
-                      Редактировать и отправить заново
+                      {isSubmitting ? 'Отправляем...' : 'Отправить ответ заново'}
                     </button>
                   </>
                 )}
