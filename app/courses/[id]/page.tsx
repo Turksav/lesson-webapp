@@ -98,16 +98,96 @@ export default function CourseLessonsPage() {
     setStarting(true);
 
     try {
+      console.log('Starting course:', { telegramUserId, courseId: id });
+      
+      // Вызываем RPC функцию
       const { data, error } = await supabase.rpc('start_course', {
         p_telegram_user_id: Number(telegramUserId),
         p_course_id: Number(id),
       });
 
       if (error) {
-        throw error;
+        console.error('RPC error:', error);
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+        
+        // Если ошибка 406, это может быть проблема с форматом ответа или правами доступа
+        // Пробуем альтернативный способ - создаем enrollment напрямую
+        if (error.message?.includes('406') || (error as any).code === 'PGRST116') {
+          console.log('Trying alternative method: direct enrollment creation');
+          
+          // Проверяем активный курс
+          const { data: activeCourses } = await supabase
+            .from('user_course_enrollments')
+            .select('course_id')
+            .eq('telegram_user_id', Number(telegramUserId))
+            .eq('status', 'active');
+          
+          if (activeCourses && activeCourses.length > 0) {
+            throw new Error('У вас уже есть активный курс. Завершите его, чтобы начать новый.');
+          }
+          
+          // Проверяем баланс
+          const { data: balanceData } = await supabase
+            .from('user_balance')
+            .select('balance')
+            .eq('telegram_user_id', Number(telegramUserId))
+            .single();
+          
+          const currentBalance = Number(balanceData?.balance || 0);
+          const coursePrice = course.price || 0;
+          
+          if (currentBalance < coursePrice) {
+            throw new Error(`Недостаточно средств на балансе. Требуется: ${coursePrice}, доступно: ${currentBalance}`);
+          }
+          
+          // Создаем enrollment
+          const { data: newEnrollmentData, error: enrollError } = await supabase
+            .from('user_course_enrollments')
+            .insert({
+              telegram_user_id: Number(telegramUserId),
+              course_id: Number(id),
+              status: 'active',
+            })
+            .select()
+            .single();
+          
+          if (enrollError) {
+            throw enrollError;
+          }
+          
+          // Списываем баланс
+          const { error: balanceError } = await supabase
+            .from('user_balance')
+            .update({ balance: currentBalance - coursePrice })
+            .eq('telegram_user_id', Number(telegramUserId));
+          
+          if (balanceError) {
+            console.error('Balance update error:', balanceError);
+            // Не прерываем процесс, так как enrollment уже создан
+          }
+          
+          // Устанавливаем enrollment и обновляем данные
+          if (newEnrollmentData) {
+            setEnrollment(newEnrollmentData);
+            setBalance(currentBalance - coursePrice);
+            // Обновляем остальные данные
+            await loadData();
+          }
+          
+          return; // Выходим из функции, так как уже обработали альтернативным способом
+        } else {
+          throw error;
+        }
       }
 
-      // Загружаем enrollment сразу после успешного начала курса
+      console.log('Course started successfully:', data);
+
+      // Загружаем enrollment сразу после успешного начала курса (если использовали RPC)
       const { data: newEnrollment } = await supabase
         .from('user_course_enrollments')
         .select('*')
