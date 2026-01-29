@@ -283,7 +283,7 @@ export default function CourseLessonsPage() {
       <section className="surface">
         <header className="page-header">
           <div>
-            <Link href="/courses" className="btn-back">
+            <Link href="/" className="btn-back">
               ← Назад к курсам
             </Link>
             <h1 className="page-title">{course?.title ?? 'Курс'}</h1>
