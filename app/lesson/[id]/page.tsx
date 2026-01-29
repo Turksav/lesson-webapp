@@ -32,6 +32,10 @@ export default function LessonPage() {
       const telegramUserId =
         (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
 
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lesson/[id]/page.tsx:loadLessonData',message:'Auth check',data:{hasTelegramUserId:!!telegramUserId,hasWindowTelegramUserId:!!(window as any).__telegramUserId,hasTg:!!tg,hasTgUser:!!tg?.initDataUnsafe?.user?.id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
+      // #endregion
+
       // Загружаем урок
       const { data: lessonData, error: lessonError } = await supabase
         .from('lessons')
@@ -85,6 +89,9 @@ export default function LessonPage() {
             console.error('Error in user-specific data loading:', error);
           }
         } else {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lesson/[id]/page.tsx:setIsUnlocked',message:'Setting Требуется авторизация',data:{telegramUserId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
+          // #endregion
           setIsUnlocked({ unlocked: false, message: 'Требуется авторизация' });
         }
       }

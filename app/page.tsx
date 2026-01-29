@@ -11,7 +11,7 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState<'courses' | 'rules' | 'cabinet'>('courses');
 
   return (
-    <TelegramUserGate>
+    <>
       <TelegramInit />
       <main className="container">
         <section className="surface">
@@ -55,6 +55,6 @@ export default function Page() {
           </div>
         </section>
       </main>
-    </TelegramUserGate>
+    </>
   );
 }

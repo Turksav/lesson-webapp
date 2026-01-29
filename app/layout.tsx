@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Script from 'next/script';
+import TelegramUserGate from '@/components/TelegramUserGate';
 import './globals.css';
 
 export default function RootLayout({
@@ -15,7 +16,9 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <TelegramUserGate>{children}</TelegramUserGate>
+      </body>
     </html>
   );
 }
