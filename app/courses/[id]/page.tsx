@@ -18,6 +18,7 @@ export default function CourseLessonsPage() {
   const [starting, setStarting] = useState(false);
   const [activeCourseId, setActiveCourseId] = useState<number | null>(null);
   const [lessonsProgress, setLessonsProgress] = useState<Map<number, any>>(new Map());
+  const [lessonsUnlocked, setLessonsUnlocked] = useState<Map<number, boolean>>(new Map());
 
   useEffect(() => {
     if (!id) return;
@@ -79,6 +80,23 @@ export default function CourseLessonsPage() {
           );
           setLessonsProgress(progressMap);
         }
+
+        // Проверяем доступность каждого урока по дате
+        const unlockedMap = new Map<number, boolean>();
+        for (const lesson of lessonsData) {
+          try {
+            const { data: unlockData } = await supabase.rpc('is_lesson_unlocked', {
+              p_telegram_user_id: Number(telegramUserId),
+              p_lesson_id: lesson.id,
+            });
+            unlockedMap.set(lesson.id, unlockData?.unlocked === true);
+          } catch (error) {
+            console.error(`Error checking unlock status for lesson ${lesson.id}:`, error);
+            // По умолчанию считаем недоступным при ошибке
+            unlockedMap.set(lesson.id, false);
+          }
+        }
+        setLessonsUnlocked(unlockedMap);
       }
 
       // Загружаем баланс и валюту
@@ -309,22 +327,25 @@ export default function CourseLessonsPage() {
             ) : (
               <div className="lesson-grid">
                 {lessons.map((l, index) => {
-                  // Первый урок всегда доступен, остальные проверяем через API
-                  const isFirstLesson = index === 0;
                   const lessonProgress = lessonsProgress.get(l.id);
                   const isCompleted = lessonProgress?.status === 'completed';
+                  const isUnlocked = lessonsUnlocked.get(l.id) ?? false;
+                  
                   return (
                     <div key={l.id} className="lesson-card" style={{ position: 'relative' }}>
-                      {!isFirstLesson && !isCompleted && (
+                      {/* Показываем замок только если урок не завершён И недоступен */}
+                      {!isCompleted && !isUnlocked && (
                         <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '4px 8px', background: '#f3f4f6', borderRadius: '4px', fontSize: '12px', color: '#6b7280' }}>
                           🔒
                         </div>
                       )}
+                      {/* Показываем галочку только если урок завершён */}
                       {isCompleted && (
                         <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '4px 8px', background: '#dcfce7', borderRadius: '4px', fontSize: '16px', color: '#16a34a' }}>
                           ✓
                         </div>
                       )}
+                      {/* Если урок не завершён, но доступен - никакой значок не показываем */}
                       <Link href={`/lesson/${l.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                         <h2 className="lesson-card-title">{l.title}</h2>
                       </Link>
