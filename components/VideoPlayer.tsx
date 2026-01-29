@@ -1,7 +1,5 @@
 'use client';
 
-import Script from 'next/script';
-
 interface VideoPlayerProps {
   kinescopeVideoId: string;
   title?: string;
@@ -21,16 +19,18 @@ export default function VideoPlayer({ kinescopeVideoId, title }: VideoPlayerProp
     );
   }
 
+  const embedUrl = `https://kinescope.io/embed/${kinescopeVideoId}`;
+
   return (
     <div className="video-player-container">
-      <div
-        id={`kinescope-popup-${kinescopeVideoId}`}
-        className="kinescope-popup-wrapper"
-      >
-        <Script
-          src={`https://kinescope.io/${kinescopeVideoId}/popup.js?aspect_ratio=9/16`}
-          strategy="afterInteractive"
-          key={kinescopeVideoId}
+      <div className="kinescope-player-wrapper">
+        <iframe
+          src={embedUrl}
+          className="kinescope-player"
+          allowFullScreen
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; screen-wake-lock;"
+          frameBorder="0"
+          title={title || 'Видео урока'}
         />
       </div>
       {title && (
