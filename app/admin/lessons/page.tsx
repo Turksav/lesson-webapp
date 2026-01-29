@@ -375,7 +375,7 @@ export default function AdminLessonsPage() {
             {formData.kinescope_video_id && (
               <small style={{ color: '#16a34a', fontSize: '12px', marginTop: '4px', display: 'block' }}>
                 <a 
-                  href={`https://kinescope.io/admin/video/${formData.kinescope_video_id}`}
+                  href={`https://kinescope.io/${formData.kinescope_video_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: '#16a34a', textDecoration: 'underline' }}
@@ -688,7 +688,7 @@ export default function AdminLessonsPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <span style={{ color: '#16a34a', fontSize: '12px' }}>✓ Есть видео</span>
                       <a 
-                        href={`https://kinescope.io/admin/video/${lesson.kinescope_video_id}`}
+                        href={`https://kinescope.io/${lesson.kinescope_video_id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ color: '#6366f1', fontSize: '11px', textDecoration: 'underline' }}
