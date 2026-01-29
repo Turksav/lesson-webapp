@@ -165,7 +165,12 @@ export default function CoursesSection() {
           const isCompleted = enrollment?.status === 'completed';
 
           return (
-            <div key={course.id} className="course-card">
+            <Link
+              key={course.id}
+              href={`/courses/${course.id}`}
+              className="course-card"
+              style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+            >
               {course.image_url && (
                 <div className="course-image">
                   <img src={course.image_url} alt={course.title} />
@@ -190,21 +195,14 @@ export default function CoursesSection() {
                     {Number(course.price) === 0 ? 'Бесплатно' : formatCurrency(Number(course.price), currency)}
                   </p>
                 )}
-                {isPaid ? (
-                  <Link 
-                    href={`/courses/${course.id}`} 
-                    className={`btn ${isCompleted ? 'btn-ghost' : 'btn-primary'}`} 
-                    style={{ marginTop: '12px' }}
-                  >
-                    {isCompleted ? 'Посмотреть результаты' : 'Продолжить'}
-                  </Link>
-                ) : (
-                  <Link href={`/courses/${course.id}`} className="btn btn-primary" style={{ marginTop: '12px' }}>
-                    Подробнее
-                  </Link>
-                )}
+                <span
+                  className={`btn ${isPaid ? (isCompleted ? 'btn-ghost' : 'btn-primary') : 'btn-primary'}`}
+                  style={{ marginTop: '12px', display: 'inline-block' }}
+                >
+                  {isPaid ? (isCompleted ? 'Посмотреть результаты' : 'Продолжить') : 'Подробнее'}
+                </span>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
