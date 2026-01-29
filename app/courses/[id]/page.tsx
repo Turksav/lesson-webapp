@@ -297,7 +297,7 @@ export default function CourseLessonsPage() {
           <div>
             {hasInsufficientBalance && (
               <div style={{ marginBottom: '16px', padding: '12px', background: '#fef2f2', borderRadius: '8px', color: '#dc2626' }}>
-                Недостаточно средств на балансе. Требуется: {formatCurrency(course.price, currency)}, доступно: {formatCurrency(balance, currency)}
+                Недостаточно средств на балансе. Требуется: {Number(course.price) === 0 ? 'Бесплатно' : formatCurrency(Number(course.price), currency)}, доступно: {formatCurrency(balance, currency)}
               </div>
             )}
             {!hasActiveOtherCourse && (

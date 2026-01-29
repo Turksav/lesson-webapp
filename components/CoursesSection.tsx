@@ -176,7 +176,7 @@ export default function CoursesSection() {
                 {course.description && (
                   <p className="course-description">{course.description}</p>
                 )}
-                {course.price !== undefined && course.price !== null && (
+                {(course.price !== undefined && course.price !== null) && (
                   <p 
                     className="course-price" 
                     style={{ 
@@ -187,7 +187,7 @@ export default function CoursesSection() {
                       opacity: isPaid ? 0.7 : 1
                     }}
                   >
-                    {formatCurrency(course.price, currency)}
+                    {Number(course.price) === 0 ? 'Бесплатно' : formatCurrency(Number(course.price), currency)}
                   </p>
                 )}
                 {isPaid ? (
