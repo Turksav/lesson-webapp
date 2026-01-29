@@ -265,8 +265,8 @@ export default function LessonPage() {
                 <h4 style={{ marginBottom: '12px', fontSize: '16px', fontWeight: '600' }}>Ваш ответ:</h4>
                 {isAnswerApproved ? (
                   <>
-                    <div style={{ padding: '12px', background: 'white', borderRadius: '6px', lineHeight: '1.6', color: '#374151', marginBottom: '12px' }}>
-                      {progress.user_answer}
+                    <div className="lesson-text-block" style={{ padding: '12px', background: 'white', borderRadius: '6px', lineHeight: '1.6', color: '#374151', marginBottom: '12px' }}>
+                      <ReactMarkdown remarkPlugins={[remarkBreaks]}>{progress.user_answer}</ReactMarkdown>
                     </div>
                     {progress.photo_url && (
                       <div style={{ marginTop: '12px', marginBottom: '12px' }}>
