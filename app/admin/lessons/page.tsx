@@ -420,9 +420,12 @@ export default function AdminLessonsPage() {
               value={formData.question}
               onChange={(e) => setFormData({ ...formData, question: e.target.value })}
               className="form-textarea"
-              rows={3}
+              rows={4}
               placeholder="Вопрос, который будет показан клиенту при завершении урока"
             />
+            <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+              Переносы строк и Markdown: **жирный**, *курсив*, списки.
+            </small>
           </div>
           <div className="form-group">
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

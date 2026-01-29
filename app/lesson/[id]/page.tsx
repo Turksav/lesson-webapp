@@ -256,9 +256,9 @@ export default function LessonPage() {
         {isUnlocked?.unlocked && lesson.question && (
           <div style={{ marginTop: '24px', padding: '20px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
             <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: '600' }}>Вопрос к уроку:</h3>
-            <p style={{ marginBottom: '20px', padding: '12px', background: 'white', borderRadius: '6px', lineHeight: '1.6' }}>
-              {lesson.question}
-            </p>
+            <div className="lesson-text-block" style={{ marginBottom: '20px', padding: '12px', background: 'white', borderRadius: '6px', lineHeight: '1.6' }}>
+              <ReactMarkdown remarkPlugins={[remarkBreaks]}>{lesson.question}</ReactMarkdown>
+            </div>
             
             {hasAnswer ? (
               <div>
