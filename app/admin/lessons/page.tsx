@@ -393,9 +393,12 @@ export default function AdminLessonsPage() {
               value={formData.lesson_description}
               onChange={(e) => setFormData({ ...formData, lesson_description: e.target.value })}
               className="form-textarea"
-              rows={3}
+              rows={5}
               placeholder="Описание урока, показываемое клиенту ниже видео"
             />
+            <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+              Переносы строк сохраняются. Поддерживается Markdown: **жирный**, *курсив*, списки (строка с - или 1.).
+            </small>
           </div>
 
             <label>Описание видео (для AI)</label>

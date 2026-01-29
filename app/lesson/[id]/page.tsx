@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 import { supabase } from '@/lib/supabase';
 import VideoPlayer from '@/components/VideoPlayer';
 import LessonCompletionModal from '@/components/LessonCompletionModal';
@@ -225,8 +227,8 @@ export default function LessonPage() {
         )}
 
         {lesson.lesson_description && isUnlocked?.unlocked && (
-          <div className="lesson-description" style={{ marginTop: '24px', padding: '16px', background: '#f9fafb', borderRadius: '8px' }}>
-            <p style={{ margin: 0, lineHeight: '1.6' }}>{lesson.lesson_description}</p>
+          <div className="lesson-description lesson-text-block" style={{ marginTop: '24px', padding: '16px', background: '#f9fafb', borderRadius: '8px' }}>
+            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{lesson.lesson_description}</ReactMarkdown>
           </div>
         )}
 
@@ -236,16 +238,18 @@ export default function LessonPage() {
               <div key={s.id} className="lesson-card">
                 <div className="badge">Занятие</div>
                 <h2 className="lesson-card-title">{s.title}</h2>
-                {s.content && <div className="lesson-body">{s.content}</div>}
+                {s.content && (
+                  <div className="lesson-body lesson-text-block">
+                    <ReactMarkdown remarkPlugins={[remarkBreaks]}>{s.content}</ReactMarkdown>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         ) : isUnlocked?.unlocked && lesson.content ? (
-          <div className="lesson-body">
-            {lesson.content}
+          <div className="lesson-body lesson-text-block">
+            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{lesson.content}</ReactMarkdown>
           </div>
-        ) : isUnlocked?.unlocked ? (
-          <p className="page-subtitle">В этом уроке пока нет занятий.</p>
         ) : null}
 
         {/* Отображение вопроса и ответа */}
