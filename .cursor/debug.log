@@ -1,0 +1,4 @@
+{"location":"lesson/[id]/page.tsx:loadLessonData","message":"Auth check","data":{"hasTelegramUserId":true,"hasWindowTelegramUserId":true,"hasTg":true,"hasTgUser":true},"timestamp":1769705102330,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"lesson/[id]/page.tsx:loadLessonData","message":"Auth check","data":{"hasTelegramUserId":true,"hasWindowTelegramUserId":true,"hasTg":true,"hasTgUser":true},"timestamp":1769705106379,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"lesson/[id]/page.tsx:loadLessonData","message":"Auth check","data":{"hasTelegramUserId":true,"hasWindowTelegramUserId":true,"hasTg":true,"hasTgUser":true},"timestamp":1769705199085,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"lesson/[id]/page.tsx:loadLessonData","message":"Auth check","data":{"hasTelegramUserId":true,"hasWindowTelegramUserId":true,"hasTg":true,"hasTgUser":true},"timestamp":1769705475331,"sessionId":"debug-session","hypothesisId":"H1"}
