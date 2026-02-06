@@ -44,10 +44,7 @@ export default function LessonCompletionModal({
   };
 
   const handleGallerySelect = () => {
-    // #region agent log
     const tg = (window as any)?.Telegram?.WebApp;
-    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LessonCompletionModal.tsx:handleGallerySelect',message:'Gallery: tg/showPhotoPicker check',data:{hasTg:!!tg,hasShowPhotoPicker:!!tg?.showPhotoPicker},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     if (tg && tg.showPhotoPicker) {
       tg.showPhotoPicker({ source: 'gallery' }, async (photos: any[]) => {
         if (photos && photos.length > 0) {
@@ -62,10 +59,7 @@ export default function LessonCompletionModal({
   };
 
   const handleCameraSelect = () => {
-    // #region agent log
     const tg = (window as any)?.Telegram?.WebApp;
-    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LessonCompletionModal.tsx:handleCameraSelect',message:'Camera branch',data:{inTelegram:!!(tg?.showPhotoPicker)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix'})}).catch(()=>{});
-    // #endregion
     // In Telegram WebView camera input only shows file picker; open gallery picker and take one photo (user can take photo in Camera app first, then select it)
     if (tg && tg.showPhotoPicker) {
       tg.showPhotoPicker({ source: 'gallery' }, async (photos: any[]) => {
