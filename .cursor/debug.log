@@ -1,0 +1,2 @@
+{"location":"LessonCompletionModal.tsx:handleCameraSelect","message":"Camera: using native input (post-fix)","data":{"cameraRefSet":true},"timestamp":1770402142920,"sessionId":"debug-session","runId":"post-fix"}
+{"location":"LessonCompletionModal.tsx:handleGallerySelect","message":"Gallery: tg/showPhotoPicker check","data":{"hasTg":true,"hasShowPhotoPicker":false},"timestamp":1770402145747,"sessionId":"debug-session","hypothesisId":"C"}
