@@ -44,7 +44,10 @@ export default function LessonCompletionModal({
   };
 
   const handleGallerySelect = () => {
+    // #region agent log
     const tg = (window as any)?.Telegram?.WebApp;
+    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LessonCompletionModal.tsx:handleGallerySelect',message:'Gallery: tg/showPhotoPicker check',data:{hasTg:!!tg,hasShowPhotoPicker:!!tg?.showPhotoPicker},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     if (tg && tg.showPhotoPicker) {
       tg.showPhotoPicker({ source: 'gallery' }, async (photos: any[]) => {
         if (photos && photos.length > 0) {
@@ -59,14 +62,28 @@ export default function LessonCompletionModal({
   };
 
   const handleCameraSelect = () => {
+    // #region agent log
     const tg = (window as any)?.Telegram?.WebApp;
+    const useTg = !!(tg && tg.showPhotoPicker);
+    const cameraRefSet = !!cameraInputRef.current;
+    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LessonCompletionModal.tsx:handleCameraSelect',message:'Camera: branch and refs',data:{hasTg:!!tg,hasShowPhotoPicker:!!tg?.showPhotoPicker,useTgBranch:useTg,cameraRefSet,userAgent:typeof navigator!=='undefined'?navigator.userAgent:''},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A',runId:'camera'})}).catch(()=>{});
+    // #endregion
     if (tg && tg.showPhotoPicker) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LessonCompletionModal.tsx:handleCameraSelect',message:'Calling showPhotoPicker source:camera',data:{source:'camera'},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       tg.showPhotoPicker({ source: 'camera' }, async (photos: any[]) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LessonCompletionModal.tsx:showPhotoPicker(camera) callback',message:'Camera callback',data:{photosCount:photos?.length??0},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         if (photos && photos.length > 0) {
           await uploadOneToStorage(photos[0]);
         }
       });
     } else {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LessonCompletionModal.tsx:handleCameraSelect',message:'Fallback: clicking camera input',data:{cameraRefSet:!!cameraInputRef.current},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       cameraInputRef.current?.click();
     }
   };
