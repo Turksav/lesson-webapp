@@ -63,10 +63,19 @@ export default function LessonCompletionModal({
 
   const handleCameraSelect = () => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LessonCompletionModal.tsx:handleCameraSelect',message:'Camera: using native input (post-fix)',data:{cameraRefSet:!!cameraInputRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix'})}).catch(()=>{});
+    const tg = (window as any)?.Telegram?.WebApp;
+    fetch('http://127.0.0.1:7242/ingest/f72a766d-ed91-493a-a672-e106452a1c03',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LessonCompletionModal.tsx:handleCameraSelect',message:'Camera branch',data:{inTelegram:!!(tg?.showPhotoPicker)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix'})}).catch(()=>{});
     // #endregion
-    // Always use native input with capture — showPhotoPicker({ source: 'camera' }) in Telegram on mobile opens file picker instead of camera
-    cameraInputRef.current?.click();
+    // In Telegram WebView camera input only shows file picker; open gallery picker and take one photo (user can take photo in Camera app first, then select it)
+    if (tg && tg.showPhotoPicker) {
+      tg.showPhotoPicker({ source: 'gallery' }, async (photos: any[]) => {
+        if (photos && photos.length > 0) {
+          await uploadOneToStorage(photos[0]);
+        }
+      });
+    } else {
+      cameraInputRef.current?.click();
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,6 +273,11 @@ export default function LessonCompletionModal({
                   Сделать фото
                 </button>
               </div>
+              {typeof window !== 'undefined' && (window as any)?.Telegram?.WebApp?.showPhotoPicker && (
+                <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--tg-theme-hint-color, #6b7280)' }}>
+                  В Telegram: сделайте снимок в приложении «Камера», затем нажмите «Сделать фото» и выберите его в списке.
+                </p>
+              )}
               {photoUrls.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
                   {photoUrls.map((url, index) => (
