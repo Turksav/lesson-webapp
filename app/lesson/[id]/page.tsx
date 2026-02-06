@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkBreaks from 'remark-breaks';
 import { supabase } from '@/lib/supabase';
+import { parsePhotoUrl } from '@/lib/lessonPhotoUtils';
 import VideoPlayer from '@/components/VideoPlayer';
 import LessonCompletionModal from '@/components/LessonCompletionModal';
 
@@ -268,13 +269,16 @@ export default function LessonPage() {
                     <div className="lesson-text-block" style={{ padding: '12px', background: 'white', borderRadius: '6px', lineHeight: '1.6', color: '#374151', marginBottom: '12px' }}>
                       <ReactMarkdown remarkPlugins={[remarkBreaks]}>{progress.user_answer}</ReactMarkdown>
                     </div>
-                    {progress.photo_url && (
-                      <div style={{ marginTop: '12px', marginBottom: '12px' }}>
-                        <img 
-                          src={progress.photo_url} 
-                          alt="Ответ" 
-                          style={{ maxWidth: '100%', borderRadius: '6px', border: '1px solid #e5e7eb' }} 
-                        />
+                    {parsePhotoUrl(progress.photo_url).length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px', marginBottom: '12px' }}>
+                        {parsePhotoUrl(progress.photo_url).map((url, i) => (
+                          <img
+                            key={url}
+                            src={url}
+                            alt={`Ответ ${i + 1}`}
+                            style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '6px', border: '1px solid #e5e7eb', objectFit: 'contain' }}
+                          />
+                        ))}
                       </div>
                     )}
                   </>
@@ -288,13 +292,16 @@ export default function LessonPage() {
                       style={{ width: '100%', marginBottom: '12px' }}
                       placeholder="Введите ваш ответ на вопрос..."
                     />
-                    {progress.photo_url && (
-                      <div style={{ marginTop: '12px', marginBottom: '12px' }}>
-                        <img 
-                          src={progress.photo_url} 
-                          alt="Ответ" 
-                          style={{ maxWidth: '100%', borderRadius: '6px', border: '1px solid #e5e7eb' }} 
-                        />
+                    {parsePhotoUrl(progress.photo_url).length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px', marginBottom: '12px' }}>
+                        {parsePhotoUrl(progress.photo_url).map((url, i) => (
+                          <img
+                            key={url}
+                            src={url}
+                            alt={`Ответ ${i + 1}`}
+                            style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '6px', border: '1px solid #e5e7eb', objectFit: 'contain' }}
+                          />
+                        ))}
                       </div>
                     )}
                     <div style={{ padding: '12px', background: '#fef3c7', borderRadius: '6px', marginBottom: '12px', color: '#92400e', fontSize: '14px' }}>
@@ -326,7 +333,7 @@ export default function LessonPage() {
           lesson={lesson}
           onSuccess={handleModalSuccess}
           initialAnswer={hasAnswer && !isAnswerApproved ? progress.user_answer : undefined}
-          initialPhotoUrl={hasAnswer && !isAnswerApproved ? progress.photo_url : undefined}
+          initialPhotoUrls={hasAnswer && !isAnswerApproved ? parsePhotoUrl(progress?.photo_url) : undefined}
         />
       </section>
     </main>

@@ -12,7 +12,7 @@ interface LessonCompletionModalProps {
   };
   onSuccess: () => void;
   initialAnswer?: string;
-  initialPhotoUrl?: string | null;
+  initialPhotoUrls?: string[];
 }
 
 export default function LessonCompletionModal({
@@ -21,55 +21,73 @@ export default function LessonCompletionModal({
   lesson,
   onSuccess,
   initialAnswer,
-  initialPhotoUrl,
+  initialPhotoUrls,
 }: LessonCompletionModalProps) {
   const [answer, setAnswer] = useState(initialAnswer || '');
-  const [photoUrl, setPhotoUrl] = useState<string | null>(initialPhotoUrl || null);
+  const [photoUrls, setPhotoUrls] = useState<string[]>(initialPhotoUrls || []);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Обновляем состояние при изменении initialAnswer/initialPhotoUrl
   useEffect(() => {
     if (isOpen) {
       setAnswer(initialAnswer || '');
-      setPhotoUrl(initialPhotoUrl || null);
+      setPhotoUrls(initialPhotoUrls || []);
     }
-  }, [isOpen, initialAnswer, initialPhotoUrl]);
+  }, [isOpen, initialAnswer, initialPhotoUrls]);
 
   if (!isOpen) return null;
 
-  const handlePhotoSelect = async () => {
+  const removePhoto = (index: number) => {
+    setPhotoUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleGallerySelect = () => {
     const tg = (window as any)?.Telegram?.WebApp;
-    
     if (tg && tg.showPhotoPicker) {
-      // Используем Telegram WebApp API для выбора фото
-      tg.showPhotoPicker(
-        {
-          source: 'gallery',
-        },
-        async (photos: any[]) => {
-          if (photos && photos.length > 0) {
-            // Telegram возвращает file_id или blob
-            // Загружаем в Cloudflare R2
-            await uploadPhotoToStorage(photos[0]);
+      tg.showPhotoPicker({ source: 'gallery' }, async (photos: any[]) => {
+        if (photos && photos.length > 0) {
+          for (const photo of photos) {
+            await uploadOneToStorage(photo);
           }
         }
-      );
-    } else if (fileInputRef.current) {
-      // Fallback на обычный input файла
-      fileInputRef.current.click();
+      });
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleCameraSelect = () => {
+    const tg = (window as any)?.Telegram?.WebApp;
+    if (tg && tg.showPhotoPicker) {
+      tg.showPhotoPicker({ source: 'camera' }, async (photos: any[]) => {
+        if (photos && photos.length > 0) {
+          await uploadOneToStorage(photos[0]);
+        }
+      });
+    } else {
+      cameraInputRef.current?.click();
     }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    await uploadPhotoToStorage(file);
+    const files = e.target.files;
+    if (!files?.length) return;
+    for (let i = 0; i < files.length; i++) {
+      await uploadOneToStorage(files[i]);
+    }
+    e.target.value = '';
   };
 
-  const uploadPhotoToStorage = async (fileOrBlob: File | Blob | string) => {
+  const handleCameraFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadOneToStorage(file);
+    e.target.value = '';
+  };
+
+  const uploadOneToStorage = async (fileOrBlob: File | Blob | string) => {
     setUploading(true);
     try {
       const tg = (window as any)?.Telegram?.WebApp;
@@ -80,27 +98,21 @@ export default function LessonCompletionModal({
         throw new Error('Telegram user ID not found');
       }
 
-      // Если это blob или file, конвертируем в File
       let file: File;
       if (fileOrBlob instanceof File) {
         file = fileOrBlob;
       } else if (fileOrBlob instanceof Blob) {
         file = new File([fileOrBlob], 'photo.jpg', { type: 'image/jpeg' });
       } else {
-        // Если это URL или file_id от Telegram, нужно сначала получить файл
         throw new Error('Unsupported file type');
       }
 
-      // Создаем уникальное имя файла
       const fileName = `lesson-${lesson.id}-user-${telegramUserId}-${Date.now()}.jpg`;
       const contentType = file.type || 'image/jpeg';
 
-      // Запрашиваем presigned URL у сервера
       const presignedResponse = await fetch('/api/upload-photo', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileName,
           contentType,
@@ -115,12 +127,9 @@ export default function LessonCompletionModal({
 
       const { uploadUrl, publicUrl } = await presignedResponse.json();
 
-      // Загружаем файл напрямую в R2 через presigned URL
       const uploadResponse = await fetch(uploadUrl, {
         method: 'PUT',
-        headers: {
-          'Content-Type': contentType,
-        },
+        headers: { 'Content-Type': contentType },
         body: file,
       });
 
@@ -128,14 +137,19 @@ export default function LessonCompletionModal({
         throw new Error('Ошибка при загрузке файла в R2');
       }
 
-      // Сохраняем публичный URL
-      setPhotoUrl(publicUrl);
+      setPhotoUrls((prev) => [...prev, publicUrl]);
     } catch (error: any) {
       console.error('Error uploading photo:', error);
       alert('Не удалось загрузить фото: ' + error.message);
     } finally {
       setUploading(false);
     }
+  };
+
+  const getPhotoUrlPayload = (): string | null => {
+    if (photoUrls.length === 0) return null;
+    if (photoUrls.length === 1) return photoUrls[0];
+    return JSON.stringify(photoUrls);
   };
 
   const handleSubmit = async () => {
@@ -145,7 +159,6 @@ export default function LessonCompletionModal({
     }
 
     setSubmitting(true);
-
     const tg = (window as any)?.Telegram?.WebApp;
     const telegramUserId =
       (window as any).__telegramUserId ?? tg?.initDataUnsafe?.user?.id;
@@ -159,13 +172,11 @@ export default function LessonCompletionModal({
     try {
       const response = await fetch('/api/check-lesson-answer', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lesson_id: lesson.id,
           user_answer: answer,
-          photo_url: photoUrl,
+          photo_url: getPhotoUrlPayload(),
           telegram_user_id: Number(telegramUserId),
         }),
       });
@@ -179,13 +190,11 @@ export default function LessonCompletionModal({
       if (data.approved) {
         alert('Ваш ответ принят. Завтра можете приступить к выполнению следующего урока.');
         setAnswer('');
-        setPhotoUrl(null);
+        setPhotoUrls([]);
         onSuccess();
         onClose();
       } else {
-        // Если ответ не принят, не закрываем модальное окно, чтобы пользователь мог редактировать
         alert(data.message || 'Ответ не подходит. Посмотрите видео ещё раз и попробуйте ответить снова.');
-        // Обновляем данные, чтобы показать текущий ответ на странице урока
         onSuccess();
       }
     } catch (error: any) {
@@ -227,21 +236,75 @@ export default function LessonCompletionModal({
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={handlePhotoSelect}
-                disabled={uploading}
-                style={{ marginTop: '8px' }}
-              >
-                {uploading ? 'Загружаем...' : photoUrl ? '✓ Фото загружено' : '📷 Загрузить фото'}
-              </button>
-              {photoUrl && (
-                <div style={{ marginTop: '8px' }}>
-                  <img src={photoUrl} alt="Uploaded" style={{ maxWidth: '100%', borderRadius: '8px' }} />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleCameraFileChange}
+                style={{ display: 'none' }}
+              />
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={handleGallerySelect}
+                  disabled={uploading}
+                >
+                  {uploading ? 'Загружаем...' : 'Выбрать из галереи'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={handleCameraSelect}
+                  disabled={uploading}
+                >
+                  Сделать фото
+                </button>
+              </div>
+              {photoUrls.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+                  {photoUrls.map((url, index) => (
+                    <div key={url} style={{ position: 'relative' }}>
+                      <img
+                        src={url}
+                        alt={`Фото ${index + 1}`}
+                        style={{
+                          width: '80px',
+                          height: '80px',
+                          objectFit: 'cover',
+                          borderRadius: '8px',
+                          border: '1px solid #e5e7eb',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(index)}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          border: 'none',
+                          background: 'rgba(0,0,0,0.6)',
+                          color: 'white',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          lineHeight: 1,
+                          padding: 0,
+                        }}
+                        aria-label="Удалить"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

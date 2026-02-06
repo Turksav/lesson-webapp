@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { parsePhotoUrl } from '@/lib/lessonPhotoUtils';
 import ReactMarkdown from 'react-markdown';
 import remarkBreaks from 'remark-breaks';
 
@@ -41,7 +42,8 @@ export default function AdminProgressPage() {
   const [filterMenus, setFilterMenus] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
+  const [selectedPhotoUrls, setSelectedPhotoUrls] = useState<string[]>([]);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -535,24 +537,32 @@ export default function AdminProgressPage() {
                     )}
                   </td>
                   <td>
-                    {progress.photo_url ? (
-                      <div>
-                        <img
-                          src={progress.photo_url}
-                          alt="Фото ответа"
-                          style={{
-                            width: '60px',
-                            height: '60px',
-                            objectFit: 'cover',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                          }}
-                          onClick={() => setSelectedPhotoUrl(progress.photo_url!)}
-                        />
-                      </div>
-                    ) : (
-                      <span style={{ color: '#9ca3af' }}>-</span>
-                    )}
+                    {(() => {
+                      const urls = parsePhotoUrl(progress.photo_url);
+                      if (urls.length === 0) return <span style={{ color: '#9ca3af' }}>-</span>;
+                      return (
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                          {urls.map((url, i) => (
+                            <img
+                              key={url}
+                              src={url}
+                              alt={`Фото ${i + 1}`}
+                              style={{
+                                width: '60px',
+                                height: '60px',
+                                objectFit: 'cover',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                              }}
+                              onClick={() => {
+                                setSelectedPhotoUrls(urls);
+                                setSelectedPhotoIndex(i);
+                              }}
+                            />
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td>{formatDate(progress.completed_at)}</td>
                   <td>{formatDate(progress.updated_at)}</td>
@@ -621,17 +631,17 @@ export default function AdminProgressPage() {
         </div>
       )}
 
-      {/* Модальное окно для просмотра фото */}
-      {selectedPhotoUrl && (
-        <div className="modal-overlay" onClick={() => setSelectedPhotoUrl(null)}>
+      {/* Модальное окно для просмотра фото (галерея) */}
+      {selectedPhotoUrls.length > 0 && (
+        <div className="modal-overlay" onClick={() => setSelectedPhotoUrls([])}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '90vw', maxHeight: '90vh', padding: '20px' }}>
             <div className="modal-header">
-              <h2>Фото ответа</h2>
-              <button className="modal-close" onClick={() => setSelectedPhotoUrl(null)}>×</button>
+              <h2>Фото ответа {selectedPhotoUrls.length > 1 ? `(${selectedPhotoIndex + 1} / ${selectedPhotoUrls.length})` : ''}</h2>
+              <button className="modal-close" onClick={() => setSelectedPhotoUrls([])}>×</button>
             </div>
-            <div className="modal-body" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+            <div className="modal-body" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', position: 'relative' }}>
               <img
-                src={selectedPhotoUrl}
+                src={selectedPhotoUrls[selectedPhotoIndex]}
                 alt="Фото ответа"
                 style={{
                   maxWidth: '100%',
@@ -640,9 +650,35 @@ export default function AdminProgressPage() {
                   objectFit: 'contain',
                 }}
               />
+              {selectedPhotoUrls.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoIndex((i) => (i === 0 ? selectedPhotoUrls.length - 1 : i - 1));
+                    }}
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoIndex((i) => (i === selectedPhotoUrls.length - 1 ? 0 : i + 1));
+                    }}
+                  >
+                    ›
+                  </button>
+                </>
+              )}
             </div>
             <div className="modal-footer">
-              <button className="btn btn-primary" onClick={() => setSelectedPhotoUrl(null)}>
+              <button className="btn btn-primary" onClick={() => setSelectedPhotoUrls([])}>
                 Закрыть
               </button>
             </div>
