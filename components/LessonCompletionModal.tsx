@@ -258,14 +258,6 @@ export default function LessonCompletionModal({
                 >
                   {uploading ? 'Загружаем...' : 'Выбрать из галереи'}
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={handleCameraSelect}
-                  disabled={uploading}
-                >
-                  Сделать фото
-                </button>
               </div>
               {typeof window !== 'undefined' && (window as any)?.Telegram?.WebApp?.showPhotoPicker && (
                 <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--tg-theme-hint-color, #6b7280)' }}>
