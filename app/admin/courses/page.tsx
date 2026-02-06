@@ -20,6 +20,7 @@ export default function AdminCoursesPage() {
   const [filterMenus, setFilterMenus] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -159,6 +160,7 @@ export default function AdminCoursesPage() {
 
   const handleEdit = (course: Course) => {
     setEditingId(course.id);
+    setIsCreating(false);
     setFormData({
       title: course.title,
       description: course.description || '',
@@ -169,6 +171,7 @@ export default function AdminCoursesPage() {
 
   const handleCancel = () => {
     setEditingId(null);
+    setIsCreating(false);
     setFormData({ title: '', description: '', image_url: '', price: 0 });
   };
 
@@ -238,6 +241,7 @@ export default function AdminCoursesPage() {
             className="btn btn-primary"
             onClick={() => {
               setEditingId(null);
+              setIsCreating(true);
               setFormData({ title: '', description: '', image_url: '', price: 0 });
             }}
           >
@@ -246,7 +250,7 @@ export default function AdminCoursesPage() {
         </div>
       </div>
 
-      {(editingId === null && !formData.title) || editingId !== null ? (
+      {(isCreating || editingId !== null) && (
         <div className="admin-form-card">
           <h2>{editingId ? 'Редактировать курс' : 'Создать курс'}</h2>
           <div className="form-group">
@@ -300,7 +304,7 @@ export default function AdminCoursesPage() {
             </button>
           </div>
         </div>
-      ) : null}
+      )}
 
       <div className="admin-table-card">
         <table className="admin-table">

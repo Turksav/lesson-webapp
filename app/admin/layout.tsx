@@ -15,7 +15,7 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    courses: pathname?.startsWith('/admin/courses') || pathname?.startsWith('/admin/lessons'),
+    courses: pathname?.startsWith('/admin/courses') || pathname?.startsWith('/admin/lessons') || pathname?.startsWith('/admin/progress'),
     consultations: pathname?.startsWith('/admin/slots') || pathname?.startsWith('/admin/consultations'),
   });
 
@@ -116,6 +116,12 @@ export default function AdminLayout({
                   className={`admin-nav-link admin-nav-submenu-link ${pathname === '/admin/lessons' ? 'active' : ''}`}
                 >
                   Список уроков
+                </Link>
+                <Link
+                  href="/admin/progress"
+                  className={`admin-nav-link admin-nav-submenu-link ${pathname === '/admin/progress' ? 'active' : ''}`}
+                >
+                  Прохождения
                 </Link>
               </div>
             )}

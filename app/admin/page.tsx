@@ -2,12 +2,30 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import Link from 'next/link';
+import { formatCurrency } from '@/lib/currencyUtils';
 
 interface Consultation {
   consultation_date: string;
   consultation_time: string;
   status: string;
+}
+
+interface UpcomingConsultation {
+  id: number;
+  telegram_user_id: number;
+  format: string;
+  consultation_date: string;
+  consultation_time: string;
+  quantity: number;
+  price: number;
+  currency: string;
+  comment: string | null;
+  status: string;
+  users?: {
+    first_name: string | null;
+    last_name: string | null;
+    username: string | null;
+  } | null;
 }
 
 interface Slot {
@@ -26,12 +44,14 @@ export default function AdminDashboard() {
   });
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [upcomingConsultations, setUpcomingConsultations] = useState<UpcomingConsultation[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadStats();
     loadConsultations();
     loadSlots();
+    loadUpcomingConsultations();
   }, []);
 
   const loadStats = async () => {
@@ -104,6 +124,69 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadUpcomingConsultations = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('consultations')
+        .select(`
+          id,
+          telegram_user_id,
+          format,
+          consultation_date,
+          consultation_time,
+          quantity,
+          price,
+          currency,
+          comment,
+          status,
+          users (
+            first_name,
+            last_name,
+            username
+          )
+        `)
+        .gte('consultation_date', today)
+        .in('status', ['pending', 'confirmed'])
+        .order('consultation_date', { ascending: true })
+        .order('consultation_time', { ascending: true });
+
+      if (!error && data) {
+        const now = new Date();
+        const future = (data as UpcomingConsultation[]).filter(
+          (c) => new Date(`${c.consultation_date}T${c.consultation_time}`) >= now
+        );
+        setUpcomingConsultations(future);
+      } else if (error) {
+        const { data: fallback } = await supabase
+          .from('consultations')
+          .select('id, telegram_user_id, format, consultation_date, consultation_time, quantity, price, currency, comment, status')
+          .gte('consultation_date', today)
+          .in('status', ['pending', 'confirmed'])
+          .order('consultation_date', { ascending: true })
+          .order('consultation_time', { ascending: true });
+        if (fallback && fallback.length > 0) {
+          const userIds = [...new Set(fallback.map((c: any) => c.telegram_user_id))];
+          const { data: usersData } = await supabase
+            .from('users')
+            .select('telegram_user_id, first_name, last_name, username')
+            .in('telegram_user_id', userIds);
+          const usersMap = new Map((usersData || []).map((u: any) => [u.telegram_user_id, u]));
+          const now = new Date();
+          const merged = (fallback as UpcomingConsultation[]).filter(
+            (c) => new Date(`${c.consultation_date}T${c.consultation_time}`) >= now
+          ).map((c) => ({ ...c, users: usersMap.get(c.telegram_user_id) || null }));
+          setUpcomingConsultations(merged);
+        } else {
+          setUpcomingConsultations([]);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading upcoming consultations:', err);
+      setUpcomingConsultations([]);
+    }
+  };
+
   const getDaysArray = () => {
     const days = [];
     const today = new Date();
@@ -155,6 +238,16 @@ export default function AdminDashboard() {
     
     // Если нет ни консультации, ни слота - недоступен
     return 'unavailable';
+  };
+
+  const getStatusLabel = (status: string): string => {
+    switch (status) {
+      case 'pending': return 'Ожидает подтверждения';
+      case 'confirmed': return 'Подтверждена';
+      case 'completed': return 'Завершена';
+      case 'cancelled': return 'Отменена';
+      default: return status;
+    }
   };
 
   if (loading) {
@@ -219,6 +312,68 @@ export default function AdminDashboard() {
             );
           })}
         </div>
+      </div>
+
+      <div className="admin-table-card" style={{ marginTop: '24px' }}>
+        <h2 className="admin-calendar-title" style={{ marginBottom: '12px' }}>Предстоящие консультации</h2>
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>User ID</th>
+              <th>Имя</th>
+              <th>Дата</th>
+              <th>Время</th>
+              <th>Формат</th>
+              <th>Цена</th>
+              <th>Комментарий</th>
+              <th>Статус</th>
+              <th>Telegram</th>
+            </tr>
+          </thead>
+          <tbody>
+            {upcomingConsultations.length === 0 ? (
+              <tr>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '16px', color: '#6b7280' }}>
+                  Нет предстоящих консультаций
+                </td>
+              </tr>
+            ) : (
+              upcomingConsultations.map((c) => {
+                const userName = c.users
+                  ? [c.users.first_name, c.users.last_name].filter(Boolean).join(' ') || c.users.username || '—'
+                  : '—';
+                const chatHref = c.users?.username
+                  ? `https://t.me/${String(c.users.username).replace('@', '')}`
+                  : null;
+                return (
+                  <tr key={c.id}>
+                    <td>{c.telegram_user_id}</td>
+                    <td>{userName}</td>
+                    <td>{new Date(c.consultation_date).toLocaleDateString('ru-RU')}</td>
+                    <td>{c.consultation_time.slice(0, 5)}</td>
+                    <td>{c.format}</td>
+                    <td>{formatCurrency(c.price * c.quantity, c.currency)}</td>
+                    <td>{c.comment || '—'}</td>
+                    <td>
+                      <span className={`status-badge status-${c.status}`}>
+                        {getStatusLabel(c.status)}
+                      </span>
+                    </td>
+                    <td>
+                      {chatHref ? (
+                        <a href={chatHref} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-ghost" style={{ textDecoration: 'none' }}>
+                          Чат
+                        </a>
+                      ) : (
+                        <span style={{ color: '#9ca3af', fontSize: '12px' }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

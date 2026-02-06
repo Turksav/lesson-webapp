@@ -51,7 +51,7 @@ export default function LessonCompletionModal({
         async (photos: any[]) => {
           if (photos && photos.length > 0) {
             // Telegram возвращает file_id или blob
-            // Нужно загрузить в Supabase Storage
+            // Загружаем в Cloudflare R2
             await uploadPhotoToStorage(photos[0]);
           }
         }
@@ -80,37 +80,56 @@ export default function LessonCompletionModal({
         throw new Error('Telegram user ID not found');
       }
 
-      // Создаем уникальное имя файла
-      const fileName = `lesson-${lesson.id}-user-${telegramUserId}-${Date.now()}.jpg`;
-      const filePath = `${telegramUserId}/${fileName}`;
-
       // Если это blob или file, конвертируем в File
       let file: File;
       if (fileOrBlob instanceof File) {
         file = fileOrBlob;
       } else if (fileOrBlob instanceof Blob) {
-        file = new File([fileOrBlob], fileName, { type: 'image/jpeg' });
+        file = new File([fileOrBlob], 'photo.jpg', { type: 'image/jpeg' });
       } else {
         // Если это URL или file_id от Telegram, нужно сначала получить файл
         throw new Error('Unsupported file type');
       }
 
-      // Загружаем в Supabase Storage
-      const { data, error } = await (await import('@/lib/supabase')).supabase.storage
-        .from('lesson-photos')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
+      // Создаем уникальное имя файла
+      const fileName = `lesson-${lesson.id}-user-${telegramUserId}-${Date.now()}.jpg`;
+      const contentType = file.type || 'image/jpeg';
 
-      if (error) throw error;
+      // Запрашиваем presigned URL у сервера
+      const presignedResponse = await fetch('/api/upload-photo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName,
+          contentType,
+          telegramUserId: Number(telegramUserId),
+        }),
+      });
 
-      // Получаем публичный URL
-      const { data: urlData } = (await import('@/lib/supabase')).supabase.storage
-        .from('lesson-photos')
-        .getPublicUrl(filePath);
+      if (!presignedResponse.ok) {
+        const errorData = await presignedResponse.json();
+        throw new Error(errorData.error || 'Ошибка при получении URL для загрузки');
+      }
 
-      setPhotoUrl(urlData.publicUrl);
+      const { uploadUrl, publicUrl } = await presignedResponse.json();
+
+      // Загружаем файл напрямую в R2 через presigned URL
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': contentType,
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Ошибка при загрузке файла в R2');
+      }
+
+      // Сохраняем публичный URL
+      setPhotoUrl(publicUrl);
     } catch (error: any) {
       console.error('Error uploading photo:', error);
       alert('Не удалось загрузить фото: ' + error.message);

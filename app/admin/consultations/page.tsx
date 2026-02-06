@@ -20,6 +20,7 @@ interface Consultation {
     first_name: string | null;
     last_name: string | null;
     username: string | null;
+    admin_note?: string | null;
   };
 }
 
@@ -30,6 +31,8 @@ export default function AdminConsultationsPage() {
   const [filters, setFilters] = useState<Record<string, Set<string>>>({});
   const [filterMenus, setFilterMenus] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [savingNoteUserId, setSavingNoteUserId] = useState<number | null>(null);
+  const [noteDraft, setNoteDraft] = useState<Record<number, string>>({});
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -45,7 +48,8 @@ export default function AdminConsultationsPage() {
         users (
           first_name,
           last_name,
-          username
+          username,
+          admin_note
         )
       `)
       .order('consultation_date', { ascending: false })
@@ -67,7 +71,7 @@ export default function AdminConsultationsPage() {
         const userIds = [...new Set(fallbackData.map(c => c.telegram_user_id))];
         const { data: usersData } = await supabase
           .from('users')
-          .select('telegram_user_id, first_name, last_name, username')
+          .select('telegram_user_id, first_name, last_name, username, admin_note')
           .in('telegram_user_id', userIds);
         
         const usersMap = new Map(
@@ -293,6 +297,70 @@ export default function AdminConsultationsPage() {
     }
   };
 
+  // Список клиентов: уникальные пользователи из консультаций + агрегаты
+  const getClientsList = (): Array<{
+    telegram_user_id: number;
+    name: string;
+    admin_note: string | null;
+    completedCount: number;
+    totalPaidText: string;
+    username: string | null;
+  }> => {
+    const userIds = [...new Set(allConsultations.map(c => c.telegram_user_id))];
+    return userIds.map(telegram_user_id => {
+      const cons = allConsultations.filter(c => c.telegram_user_id === telegram_user_id);
+      const first = cons[0];
+      const u = first?.users;
+      const name = u
+        ? [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || `ID ${telegram_user_id}`
+        : `ID ${telegram_user_id}`;
+      const completedCount = cons.filter(c => c.status !== 'cancelled').length;
+      const paidByCurrency: Record<string, number> = {};
+      cons.filter(c => c.status !== 'cancelled').forEach(c => {
+        const key = c.currency || 'RUB';
+        paidByCurrency[key] = (paidByCurrency[key] || 0) + c.price * c.quantity;
+      });
+      const totalPaidText = Object.entries(paidByCurrency)
+        .map(([cur, sum]) => formatCurrency(sum, cur))
+        .join(' / ') || '—';
+      return {
+        telegram_user_id,
+        name,
+        admin_note: u?.admin_note ?? null,
+        completedCount,
+        totalPaidText,
+        username: u?.username ?? null,
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  };
+
+  const handleSaveClientNote = async (telegramUserId: number, newNote: string | null) => {
+    setSavingNoteUserId(telegramUserId);
+    try {
+      const { error } = await supabase.rpc('update_user_admin_note', {
+        p_telegram_user_id: telegramUserId,
+        p_admin_note: newNote || '',
+      });
+      if (error) throw error;
+      setAllConsultations(prev =>
+        prev.map(c =>
+          c.telegram_user_id === telegramUserId && c.users
+            ? { ...c, users: { ...c.users, admin_note: newNote || null } }
+            : c
+        )
+      );
+      setNoteDraft(prev => {
+        const next = { ...prev };
+        delete next[telegramUserId];
+        return next;
+      });
+    } catch (err: any) {
+      alert('Ошибка сохранения примечания: ' + err?.message);
+    } finally {
+      setSavingNoteUserId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="admin-page">
@@ -316,6 +384,73 @@ export default function AdminConsultationsPage() {
         >
           Очистить фильтры
         </button>
+      </div>
+
+      <div className="admin-table-card" style={{ marginBottom: '24px' }}>
+        <h2 style={{ marginBottom: '12px', fontSize: '1.1rem' }}>Клиенты</h2>
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Имя</th>
+              <th>Примечание</th>
+              <th>Прошло консультаций</th>
+              <th>Оплачено за консультации</th>
+              <th>Чат</th>
+            </tr>
+          </thead>
+          <tbody>
+            {getClientsList().map((client) => {
+              const chatHref = client.username
+                ? `https://t.me/${client.username.replace('@', '')}`
+                : null;
+              const noteValue = noteDraft[client.telegram_user_id] ?? client.admin_note ?? '';
+              const isSaving = savingNoteUserId === client.telegram_user_id;
+              return (
+                <tr key={client.telegram_user_id}>
+                  <td>{client.name}</td>
+                  <td style={{ minWidth: '200px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <input
+                        type="text"
+                        value={noteValue}
+                        onChange={(e) => setNoteDraft((prev) => ({ ...prev, [client.telegram_user_id]: e.target.value }))}
+                        className="form-input"
+                        placeholder="Примечание..."
+                        style={{ flex: 1, minWidth: '120px' }}
+                        disabled={isSaving}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => handleSaveClientNote(client.telegram_user_id, noteValue.trim() || null)}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? '…' : 'Сохранить'}
+                      </button>
+                    </div>
+                  </td>
+                  <td>{client.completedCount}</td>
+                  <td>{client.totalPaidText}</td>
+                  <td>
+                    {chatHref ? (
+                      <a
+                        href={chatHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-sm btn-ghost"
+                        style={{ textDecoration: 'none' }}
+                      >
+                        Чат
+                      </a>
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '12px' }}>Нет username</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       <div className="admin-table-card">
