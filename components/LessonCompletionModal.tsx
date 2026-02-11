@@ -29,13 +29,17 @@ export default function LessonCompletionModal({
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const prevIsOpenRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (isOpen) {
+    // Обновляем состояние только при открытии модального окна (переход с false на true)
+    // Это предотвращает перезапись изменений пользователя при каждом рендере родительского компонента
+    if (isOpen && !prevIsOpenRef.current) {
       setAnswer(initialAnswer || '');
       setPhotoUrls(initialPhotoUrls || []);
     }
-  }, [isOpen, initialAnswer, initialPhotoUrls]);
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
